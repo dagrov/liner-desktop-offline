@@ -1,6 +1,8 @@
 import {
   importLocalAudioBlobs,
+  scanPcForAudio,
   syncElectronMusicDirectory,
+  useOfflineLibraryStore,
 } from "@/features/offline/store/offlineLibraryStore";
 import {
   importCoverBlobs,
@@ -104,6 +106,39 @@ export async function pickAndSyncMusicFolder(): Promise<{
     audioFiles.map((file) => ({ file, name: file.name })),
   );
   return { folderLabel: folderName, importedCount: created.length };
+}
+
+export async function triggerManualPcAudioScan(): Promise<{
+  mode: "electron" | "browser";
+  totalFound: number;
+  newlyImported: number;
+}> {
+  if (
+    typeof window !== "undefined" &&
+    window.linerElectron?.localMedia?.scanPcAudio
+  ) {
+    const res = await scanPcForAudio();
+    return {
+      mode: "electron",
+      totalFound: res.totalFound,
+      newlyImported: res.newlyImported,
+    };
+  }
+
+  useOfflineLibraryStore.setState({ isScanningPc: true });
+  try {
+    const res = await pickAndSyncMusicFolder();
+    if (res.folderLabel) {
+      useOfflineLibraryStore.getState().setSyncedMusicFolder(res.folderLabel);
+    }
+    return {
+      mode: "browser",
+      totalFound: res.importedCount,
+      newlyImported: res.importedCount,
+    };
+  } finally {
+    useOfflineLibraryStore.setState({ isScanningPc: false });
+  }
 }
 
 export async function pickAndImportFontFiles(): Promise<number> {

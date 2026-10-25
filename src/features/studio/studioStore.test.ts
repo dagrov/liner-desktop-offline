@@ -4,7 +4,7 @@ vi.mock("lottie-web", () => ({
   default: { loadAnimation: vi.fn() },
 }));
 
-import { SAMPLE_TRACKS } from "@/features/offline/lib/sampleLibrary";
+import { SAMPLE_TRACKS, svgToDataUrl } from "@/features/offline/lib/sampleLibrary";
 import {
   getAllOfflineTracks,
   getOfflineTrackById,
@@ -15,7 +15,7 @@ import { usePlayerStore } from "@/features/player/store/playerStore";
 import { STARTER_COVERS, STARTER_FONTS } from "./lib/starterAssets";
 import { useStudioStore } from "./store/studioStore";
 
-describe("Studio Store — Cover Art & Typography Customization", () => {
+describe("Studio Store — Vinyl-Only Built-In Cover & Music Title Font", () => {
   beforeEach(() => {
     useOfflineLibraryStore.setState({
       seededDefaults: false,
@@ -30,8 +30,8 @@ describe("Studio Store — Cover Art & Typography Customization", () => {
     useStudioStore.setState({
       customFonts: [],
       customCovers: [],
-      activeTitleFontId: "font-montserrat-studio",
-      activeBodyFontId: "font-inter-clean",
+      activeTitleFontId: STARTER_FONTS[0].id,
+      activeBodyFontId: STARTER_FONTS[1].id,
       coverPickerTrackId: null,
     });
 
@@ -43,25 +43,34 @@ describe("Studio Store — Cover Art & Typography Customization", () => {
     });
   });
 
-  it("ships curated starter fonts and starter cover artworks", () => {
+  it("ships curated music title fonts and ONLY the Minimalist Vinyl built-in cover", () => {
     expect(STARTER_FONTS.length).toBeGreaterThanOrEqual(7);
-    expect(STARTER_COVERS.length).toBeGreaterThanOrEqual(8);
+    expect(STARTER_COVERS.map((c) => c.id)).toEqual(["cover-minimal-vinyl"]);
   });
 
-  it("swaps, cycles, and restores original track cover art across OfflineLibrary & PlayerStore", () => {
+  it("swaps, cycles, and restores custom track cover art across OfflineLibrary & PlayerStore", () => {
     const trackId = SAMPLE_TRACKS[0].id;
     const originalCover = SAMPLE_TRACKS[0].coverUrl;
-    const targetCover = STARTER_COVERS.find(
-      (c) => c.imageUrl !== originalCover,
-    )!;
+    const customCoverUrl = svgToDataUrl(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#111"/></svg>',
+    );
+
+    useStudioStore.getState().addCustomCover({
+      id: "cover-user-sleeve",
+      name: "Uploaded Sleeve",
+      imageUrl: customCoverUrl,
+      tags: ["custom"],
+      description: "User uploaded cover",
+      source: "imported",
+    });
 
     const applied = useStudioStore
       .getState()
-      .applyCoverAssetToTrack(trackId, targetCover.id);
-    expect(applied?.id).toBe(targetCover.id);
-    expect(getOfflineTrackById(trackId)?.coverUrl).toBe(targetCover.imageUrl);
+      .applyCoverAssetToTrack(trackId, "cover-user-sleeve");
+    expect(applied?.id).toBe("cover-user-sleeve");
+    expect(getOfflineTrackById(trackId)?.coverUrl).toBe(customCoverUrl);
     expect(usePlayerStore.getState().currentTrack?.coverUrl).toBe(
-      targetCover.imageUrl,
+      customCoverUrl,
     );
 
     const cycled = useStudioStore.getState().cycleTrackCover(trackId);
@@ -75,7 +84,7 @@ describe("Studio Store — Cover Art & Typography Customization", () => {
     );
   });
 
-  it("updates Title and Interface typography and resets cleanly", () => {
+  it("updates music title font selection and resets cleanly", () => {
     const serifFont = STARTER_FONTS.find((f) => f.category === "serif")!;
     useStudioStore.getState().setTitleFont(serifFont.id);
     expect(useStudioStore.getState().activeTitleFontId).toBe(serifFont.id);
@@ -83,9 +92,6 @@ describe("Studio Store — Cover Art & Typography Customization", () => {
     useStudioStore.getState().resetTypography();
     expect(useStudioStore.getState().activeTitleFontId).toBe(
       STARTER_FONTS[0].id,
-    );
-    expect(useStudioStore.getState().activeBodyFontId).toBe(
-      STARTER_FONTS[1].id,
     );
   });
 });

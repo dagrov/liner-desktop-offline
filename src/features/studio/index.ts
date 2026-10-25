@@ -22,5 +22,6 @@ export {
   pickAndSyncCoversFolder,
   pickAndSyncFontsFolder,
   pickAndSyncMusicFolder,
+  triggerManualPcAudioScan,
   handleDroppedFilesImport,
 } from "./lib/filePickerUtils";

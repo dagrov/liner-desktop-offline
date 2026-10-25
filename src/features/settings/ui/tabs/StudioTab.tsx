@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   CheckLine,
   Delete2Line,
@@ -26,12 +26,10 @@ export function StudioTab({ searchQuery }: { searchQuery?: string }) {
   const customFonts = useStudioStore((s) => s.customFonts);
   const customCovers = useStudioStore((s) => s.customCovers);
   const activeTitleFontId = useStudioStore((s) => s.activeTitleFontId);
-  const activeBodyFontId = useStudioStore((s) => s.activeBodyFontId);
   const syncedFontsFolder = useStudioStore((s) => s.syncedFontsFolder);
   const syncedCoversFolder = useStudioStore((s) => s.syncedCoversFolder);
 
   const setTitleFont = useStudioStore((s) => s.setTitleFont);
-  const setBodyFont = useStudioStore((s) => s.setBodyFont);
   const resetTypography = useStudioStore((s) => s.resetTypography);
   const removeCustomFont = useStudioStore((s) => s.removeCustomFont);
   const removeCustomCover = useStudioStore((s) => s.removeCustomCover);
@@ -44,7 +42,6 @@ export function StudioTab({ searchQuery }: { searchQuery?: string }) {
   const resetTrackCover = useStudioStore((s) => s.resetTrackCover);
 
   const currentTrack = usePlayerStore((s) => s.currentTrack);
-  const [fontTarget, setFontTarget] = useState<"title" | "body">("title");
 
   const allFonts = useMemo(
     () => [...customFonts, ...STARTER_FONTS],
@@ -83,37 +80,16 @@ export function StudioTab({ searchQuery }: { searchQuery?: string }) {
   return (
     <div className="flex flex-col gap-[22px] pb-[14px]">
       {/* Typography Collection */}
-      <SettingSection label="Typography & Font Collection">
+      <SettingSection label="Music Title Font">
         <SettingBlock
-          title="Player Title & Interface Fonts"
-          description="Select typography from your collection, import .ttf/.otf/.woff2 files, or sync a local fonts folder on disk."
+          title="Song Title Typography"
+          description="Customize the font used for song titles in the player and track lists without changing Liner's app UI font."
           searchQuery={searchQuery}
         >
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="inline-flex rounded-[10px] bg-black/[0.06] dark:bg-black/30 p-1 gap-1">
-              <button
-                type="button"
-                onClick={() => setFontTarget("title")}
-                className={`h-[28px] px-3 rounded-[7px] border-0 text-[12px] font-[500] cursor-pointer transition-colors ${
-                  fontTarget === "title"
-                    ? "bg-text-primary text-bg-primary"
-                    : "bg-transparent text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                Title & Lyrics Font
-              </button>
-              <button
-                type="button"
-                onClick={() => setFontTarget("body")}
-                className={`h-[28px] px-3 rounded-[7px] border-0 text-[12px] font-[500] cursor-pointer transition-colors ${
-                  fontTarget === "body"
-                    ? "bg-text-primary text-bg-primary"
-                    : "bg-transparent text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                Interface Font
-              </button>
-            </div>
+            <span className="text-[12px] text-text-tertiary">
+              Applies only to music track titles
+            </span>
 
             <div className="flex flex-wrap items-center gap-1.5">
               <button
@@ -204,15 +180,12 @@ export function StudioTab({ searchQuery }: { searchQuery?: string }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             {allFonts.map((fontItem) => {
-              const selectedId =
-                fontTarget === "title" ? activeTitleFontId : activeBodyFontId;
-              const isSelected = selectedId === fontItem.id;
+              const isSelected = activeTitleFontId === fontItem.id;
               return (
                 <div
                   key={fontItem.id}
                   onClick={() => {
-                    if (fontTarget === "title") setTitleFont(fontItem.id);
-                    else setBodyFont(fontItem.id);
+                    setTitleFont(fontItem.id);
                   }}
                   className={`group relative flex flex-col justify-between gap-2 rounded-[11px] border p-3 cursor-pointer transition-all ${
                     isSelected

@@ -772,9 +772,12 @@ function MiniPlayer({
             </div>
             <div className="flex min-w-0 flex-col pointer-events-none">
               <p
+                data-music-title={player.currentTrack ? "true" : undefined}
                 className="m-0 truncate text-[16px] font-[400] text-text-primary flex items-center gap-[6px] pointer-events-none"
                 style={{
-                  fontFamily: "var(--font-inter), sans-serif",
+                  fontFamily: player.currentTrack
+                    ? "var(--font-music-title, var(--font-inter)), sans-serif"
+                    : "var(--font-inter), sans-serif",
                   lineHeight: "18px",
                   letterSpacing: "0",
                 }}

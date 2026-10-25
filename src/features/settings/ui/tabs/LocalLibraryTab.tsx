@@ -5,6 +5,7 @@ import {
   Music2Fill,
   Pic2Line,
   PlayFill,
+  RadarLine,
   Upload2Line,
 } from "@mingcute/react";
 import ToggleSwitch from "@/shared/ui/ToggleSwitch";
@@ -19,6 +20,7 @@ import {
 import {
   pickAndImportMusicFiles,
   pickAndSyncMusicFolder,
+  triggerManualPcAudioScan,
   useStudioStore,
 } from "@/features/studio";
 import { SettingBlock, SettingRow, SettingSection } from "../controls";
@@ -31,6 +33,13 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
   const setIncludeSampleTracks = useOfflineLibraryStore(
     (s) => s.setIncludeSampleTracks,
   );
+  const autoScanPcOnLaunch = useOfflineLibraryStore(
+    (s) => s.autoScanPcOnLaunch,
+  );
+  const setAutoScanPcOnLaunch = useOfflineLibraryStore(
+    (s) => s.setAutoScanPcOnLaunch,
+  );
+  const isScanningPc = useOfflineLibraryStore((s) => s.isScanningPc);
   const syncedMusicFolder = useOfflineLibraryStore(
     (s) => s.syncedMusicFolder,
   );
@@ -43,6 +52,28 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
   const openCoverPicker = useStudioStore((s) => s.openCoverPicker);
 
   const [busy, setBusy] = useState(false);
+
+  const handleScanPc = async () => {
+    setBusy(true);
+    try {
+      const res = await triggerManualPcAudioScan();
+      if (res.newlyImported > 0) {
+        showToast(
+          `Added ${res.newlyImported} audio track${res.newlyImported === 1 ? "" : "s"} from PC`,
+          "success",
+        );
+      } else if (res.mode === "electron") {
+        showToast(
+          res.totalFound > 0
+            ? `PC scanned — all ${res.totalFound} audio track${res.totalFound === 1 ? "" : "s"} already in library`
+            : "No audio files found in Music, Downloads, or Desktop folders",
+          "info",
+        );
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleImportFiles = async () => {
     setBusy(true);
@@ -90,16 +121,29 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
     <div className="flex flex-col gap-[20px] pb-[12px]">
       <SettingSection label="Offline Music Sources">
         <SettingBlock
-          title="Import Local Audio"
-          description="Add MP3, FLAC, WAV, OGG, M4A, AAC, or Opus files from disk, or drop audio files anywhere onto the Liner window."
+          title="Scan PC & Import Local Audio"
+          description="Automatically scan your PC's Music, Downloads, and Desktop folders, or import MP3, FLAC, WAV, OGG, M4A, AAC, and Opus files directly."
           searchQuery={searchQuery}
         >
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <button
               type="button"
+              disabled={busy || isScanningPc}
+              onClick={() => void handleScanPc()}
+              className="h-[34px] px-3.5 rounded-[10px] border-0 bg-btn-primary-bg text-btn-primary-text text-[12.5px] font-[600] inline-flex items-center gap-1.5 cursor-pointer hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              <RadarLine
+                size={15}
+                className={isScanningPc ? "animate-spin" : undefined}
+              />
+              {isScanningPc ? "Scanning PC..." : "Scan PC for Music"}
+            </button>
+
+            <button
+              type="button"
               disabled={busy}
               onClick={() => void handleImportFiles()}
-              className="h-[34px] px-3.5 rounded-[10px] border-0 bg-btn-primary-bg text-btn-primary-text text-[12.5px] font-[600] inline-flex items-center gap-1.5 cursor-pointer hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="h-[34px] px-3.5 rounded-[10px] border border-border-alpha-14 bg-black/[0.06] dark:bg-white/[0.08] hover:bg-black/[0.1] dark:hover:bg-white/[0.14] text-text-primary text-[12.5px] font-[500] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <Upload2Line size={15} />
               Import Audio Files
@@ -112,7 +156,7 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
               className="h-[34px] px-3.5 rounded-[10px] border border-border-alpha-14 bg-black/[0.06] dark:bg-white/[0.08] hover:bg-black/[0.1] dark:hover:bg-white/[0.14] text-text-primary text-[12.5px] font-[500] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <FolderOpenLine size={15} />
-              Sync Music Folder
+              Sync Custom Folder
             </button>
 
             {syncedMusicFolder && (
@@ -143,8 +187,21 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
         </SettingBlock>
 
         <SettingRow
-          title="Include Curated Sample Catalog"
-          description="Keep 6 built-in offline tracks with synchronized lyrics and album liner notes in your library."
+          title="Auto-Scan PC on Launch"
+          description="Automatically scan your PC's Music, Downloads, and Desktop folders for audio files whenever Liner opens."
+          explained
+          searchQuery={searchQuery}
+          control={
+            <ToggleSwitch
+              checked={autoScanPcOnLaunch}
+              onChange={setAutoScanPcOnLaunch}
+            />
+          }
+        />
+
+        <SettingRow
+          title="Include Demo Sample Tracks"
+          description="Optional: add 6 synthesized demo tracks with synchronized lyrics for testing when you don't have local audio yet."
           explained
           searchQuery={searchQuery}
           control={
@@ -157,15 +214,16 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
       </SettingSection>
 
       <SettingSection
-        label={`Imported Local Tracks (${customTracks.length})`}
+        label={`Local Tracks (${customTracks.length})`}
       >
         {customTracks.length === 0 ? (
           <div className="rounded-[12px] bg-black/[0.04] dark:bg-white/[0.06] px-4 py-6 text-center text-[13px] text-text-tertiary flex flex-col items-center gap-2">
             <Music2Fill size={22} className="opacity-60" />
             <span>
-              No custom audio files imported yet. Use{" "}
-              <strong className="text-text-secondary">Import Audio Files</strong>{" "}
-              or drag & drop tracks into Liner.
+              No local audio files added yet. Click{" "}
+              <strong className="text-text-secondary">Scan PC for Music</strong>,{" "}
+              <strong className="text-text-secondary">Import Audio Files</strong>,{" "}
+              or drag & drop songs into Liner.
             </span>
           </div>
         ) : (
@@ -182,7 +240,10 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
                     className="h-10 w-10 rounded-[8px] object-cover shrink-0"
                   />
                   <div className="min-w-0">
-                    <div className="text-[13.5px] font-[500] text-text-primary truncate">
+                    <div
+                      data-music-title="true"
+                      className="text-[13.5px] font-[500] text-text-primary truncate"
+                    >
                       {track.title}
                     </div>
                     <div className="text-[12px] text-text-tertiary truncate">

@@ -43,7 +43,10 @@ export function FullscreenTrackInfo({ onClose }: FullscreenTrackInfoProps) {
   return (
     <div className="flex w-full items-center gap-[12px]">
       <div className="flex min-w-0 flex-1 flex-col gap-[4px]">
-        <p className="font-montserrat m-0 truncate text-[20px] font-[600] leading-[1.2] tracking-[-0.01em] text-white">
+        <p
+          data-music-title="true"
+          className="font-montserrat m-0 truncate text-[20px] font-[600] leading-[1.2] tracking-[-0.01em] text-white"
+        >
           {track?.title || ""}
         </p>
         <p className="font-montserrat m-0 flex min-w-0 items-center gap-[6px] text-[14px] font-[500] text-white/70 leading-snug">

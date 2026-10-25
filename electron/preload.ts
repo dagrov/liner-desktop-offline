@@ -200,6 +200,14 @@ export interface LinerElectronApi {
       dirPath: string,
       kind: LocalFolderKind,
     ) => Promise<ScannedLocalFile[]>;
+    scanPcAudio: () => Promise<{
+      scannedDirs: string[];
+      files: ScannedLocalFile[];
+    }>;
+    readFileHead: (
+      filePath: string,
+      maxBytes?: number,
+    ) => Promise<LocalFilePayload | null>;
     readFile: (filePath: string) => Promise<LocalFilePayload | null>;
     watchDirectory: (
       dirPath: string,
@@ -465,6 +473,9 @@ const api: LinerElectronApi = {
     pickFiles: (kind = "music") => ipcRenderer.invoke("local:pick-files", kind),
     scanDirectory: (dirPath, kind) =>
       ipcRenderer.invoke("local:scan-directory", { dirPath, kind }),
+    scanPcAudio: () => ipcRenderer.invoke("local:scan-pc-audio"),
+    readFileHead: (filePath, maxBytes = 524_288) =>
+      ipcRenderer.invoke("local:read-file-head", { filePath, maxBytes }),
     readFile: (filePath) => ipcRenderer.invoke("local:read-file", filePath),
     watchDirectory: (dirPath, kind) =>
       ipcRenderer.invoke("local:watch-directory", { dirPath, kind }),

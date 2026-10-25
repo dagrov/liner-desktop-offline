@@ -206,7 +206,18 @@
     "popularArtists": "Trending Artists",
     "popularPlaylists": "Popular Playlists",
     "dailyMixes": "Your Mixes",
-    "dailyMixesSubtitle": "Fresh playlists curated around your favorite artists and genres"
+    "dailyMixesSubtitle": "Fresh playlists curated around your favorite artists and genres",
+    "emptyOfflineTitle": "Your offline library is empty",
+    "emptyOfflineSubtitle": "Scan your PC for audio files, import songs manually, or drag and drop tracks anywhere into Liner.",
+    "scanPcForMusic": "Scan PC for Music",
+    "importAudioFiles": "Import Audio Files"
+  },
+  "offline": {
+    "scanPc": "Scan PC",
+    "scanningPc": "Scanning PC...",
+    "importMusic": "Import Music",
+    "coversAndFonts": "Covers & Fonts",
+    "assistant": "Assistant"
   },
   "library": {
     "title": "Library",

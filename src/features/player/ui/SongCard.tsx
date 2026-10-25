@@ -203,9 +203,13 @@ function SongCard({
               <ExplicitBadge size="md" className="-mr-[2px] shrink-0" />
             )}
             <h3
+              data-music-title={imageShape !== "circle" ? "true" : undefined}
               className={`m-0 max-w-[min(52vw,560px)] overflow-hidden text-ellipsis whitespace-nowrap ${titleSizeClass} leading-[1.2] text-text-primary`}
               style={{
-                fontFamily: "var(--font-inter), sans-serif",
+                fontFamily:
+                  imageShape !== "circle"
+                    ? "var(--font-music-title, var(--font-inter)), sans-serif"
+                    : "var(--font-inter), sans-serif",
                 fontWeight: hideArtists ? 500 : 400,
               }}
             >

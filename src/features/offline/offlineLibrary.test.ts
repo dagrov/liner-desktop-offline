@@ -1,12 +1,17 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mediaUrl } from "@/shared/api/api";
-import { SAMPLE_TRACKS } from "./lib/sampleLibrary";
+import { SAMPLE_TRACKS, VINYL_COVER_DATA_URL } from "./lib/sampleLibrary";
 import { synthesizeSampleTrackWav } from "./lib/synthAudioGenerator";
-import { inferFromFilename, parseId3v2FromBytes } from "./lib/audioMetadataParser";
+import {
+  generateProceduralTrackCover,
+  inferFromFilename,
+  parseId3v2FromBytes,
+} from "./lib/audioMetadataParser";
 import {
   getAllOfflineTracks,
   isOfflineTrackId,
   offlineApi,
+  scanPcForAudio,
   useOfflineLibraryStore,
 } from "./store/offlineLibraryStore";
 
@@ -81,6 +86,65 @@ describe("Offline Library & Audio Pipeline", () => {
     expect(mediaUrl(dataUri)).toBe(dataUri);
     expect(mediaUrl(blobUri)).toBe(blobUri);
     expect(mediaUrl(fileUri)).toBe(fileUri);
+  });
+
+  it("starts completely empty when no user audio has been uploaded yet and uses Vinyl fallback cover", async () => {
+    useOfflineLibraryStore.setState({
+      seededDefaults: false,
+      includeSampleTracks: false,
+      customTracks: [],
+      playlists: [],
+      likedTracks: [],
+    });
+    useOfflineLibraryStore.getState().ensureSeeded();
+
+    expect(getAllOfflineTracks()).toEqual([]);
+    const mixes = await offlineApi.getDailyMixes();
+    expect(mixes.items).toEqual([]);
+    expect(generateProceduralTrackCover("Any Track")).toBe(VINYL_COVER_DATA_URL);
+  });
+
+  it("scans PC audio directories via Electron bridge and imports discovered tracks", async () => {
+    useOfflineLibraryStore.setState({
+      seededDefaults: true,
+      includeSampleTracks: false,
+      customTracks: [],
+    });
+
+    (window as any).linerElectron = {
+      localMedia: {
+        scanPcAudio: vi.fn().mockResolvedValue({
+          scannedDirs: ["/Users/demo/Music"],
+          files: [
+            {
+              path: "/Users/demo/Music/Mulatu Astatke - Tezeta.mp3",
+              name: "Mulatu Astatke - Tezeta.mp3",
+              ext: ".mp3",
+              size: 4_800_000,
+              mtimeMs: Date.now(),
+            },
+          ],
+        }),
+        readFileHead: vi.fn().mockResolvedValue({
+          path: "/Users/demo/Music/Mulatu Astatke - Tezeta.mp3",
+          name: "Mulatu Astatke - Tezeta.mp3",
+          mimeType: "audio/mpeg",
+          bytes: new Uint8Array(64),
+        }),
+        readFile: vi.fn(),
+        scanDirectory: vi.fn().mockResolvedValue([]),
+      },
+    };
+
+    const result = await scanPcForAudio();
+    expect(result.newlyImported).toBe(1);
+    const tracks = getAllOfflineTracks();
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0].artists).toBe("Mulatu Astatke");
+    expect(tracks[0].title).toBe("Tezeta");
+    expect(tracks[0].coverUrl).toBe(VINYL_COVER_DATA_URL);
+
+    delete (window as any).linerElectron;
   });
 
   it("serves offline search, daily mixes, and liked track mutations", async () => {

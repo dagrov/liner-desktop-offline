@@ -1,4 +1,5 @@
 import {
+  app,
   BrowserWindow,
   dialog,
   ipcMain,
@@ -152,18 +153,38 @@ export function registerLocalMediaIpc(getMainWindow: () => BrowserWindow | null)
     return false;
   }
 
+  const IGNORED_SCAN_DIRS = new Set([
+    "node_modules",
+    "appdata",
+    "application data",
+    "program files",
+    "program files (x86)",
+    "windows",
+    "$recycle.bin",
+    "system volume information",
+    "library",
+    "__pycache__",
+    "dist",
+    "build",
+    "target",
+    "venv",
+  ]);
+
   async function scanDirectoryRecursive(
     dirPath: string,
     kind: LocalFolderKind,
     maxFiles = 1500,
+    maxDepth = 5,
   ): Promise<ScannedLocalFile[]> {
     const results: ScannedLocalFile[] = [];
     const allowedExts = EXTENSIONS_BY_KIND[kind] ?? EXTENSIONS_BY_KIND.music;
-    const queue: string[] = [path.resolve(dirPath)];
+    const queue: { dir: string; depth: number }[] = [
+      { dir: path.resolve(dirPath), depth: 0 },
+    ];
     const visited = new Set<string>();
 
     while (queue.length > 0 && results.length < maxFiles) {
-      const current = queue.shift()!;
+      const { dir: current, depth } = queue.shift()!;
       if (visited.has(current)) continue;
       visited.add(current);
 
@@ -178,12 +199,16 @@ export function registerLocalMediaIpc(getMainWindow: () => BrowserWindow | null)
         if (entry.name.startsWith(".")) continue;
         const fullPath = path.join(current, entry.name);
         if (entry.isDirectory()) {
-          queue.push(fullPath);
+          if (depth < maxDepth && !IGNORED_SCAN_DIRS.has(entry.name.toLowerCase())) {
+            queue.push({ dir: fullPath, depth: depth + 1 });
+          }
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).toLowerCase();
           if (!allowedExts.has(ext)) continue;
           try {
             const stat = await fsp.stat(fullPath);
+            // Skip tiny < 4KB sound-effect/temp stubs when scanning whole PC
+            if (kind === "music" && stat.size < 4096) continue;
             results.push({
               path: fullPath,
               name: entry.name,
@@ -288,6 +313,99 @@ export function registerLocalMediaIpc(getMainWindow: () => BrowserWindow | null)
       }
       approvedRoots.add(resolved);
       return scanDirectoryRecursive(resolved, input.kind);
+    },
+  );
+
+  ipcMain.handle(
+    "local:scan-pc-audio",
+    async (
+      event,
+    ): Promise<{ scannedDirs: string[]; files: ScannedLocalFile[] }> => {
+      if (!fromApp(event)) return { scannedDirs: [], files: [] };
+
+      const candidateRoots = new Set<string>();
+      const tryAddPath = (name: "music" | "downloads" | "desktop" | "home") => {
+        try {
+          const p = app.getPath(name);
+          if (p) candidateRoots.add(path.resolve(p));
+        } catch {}
+      };
+
+      tryAddPath("music");
+      tryAddPath("downloads");
+      tryAddPath("desktop");
+      try {
+        const home = app.getPath("home");
+        if (home) {
+          candidateRoots.add(path.resolve(home, "OneDrive", "Music"));
+          candidateRoots.add(path.resolve(home, "Audio"));
+        }
+      } catch {}
+
+      const scannedDirs: string[] = [];
+      const seenPaths = new Set<string>();
+      const files: ScannedLocalFile[] = [];
+
+      for (const rootDir of candidateRoots) {
+        try {
+          const st = await fsp.stat(rootDir);
+          if (!st.isDirectory()) continue;
+        } catch {
+          continue;
+        }
+        approvedRoots.add(rootDir);
+        scannedDirs.push(rootDir);
+        const found = await scanDirectoryRecursive(
+          rootDir,
+          "music",
+          2500 - files.length,
+          5,
+        );
+        for (const item of found) {
+          const norm = path.resolve(item.path);
+          if (seenPaths.has(norm)) continue;
+          seenPaths.add(norm);
+          files.push(item);
+        }
+        if (files.length >= 2500) break;
+      }
+
+      return { scannedDirs, files };
+    },
+  );
+
+  ipcMain.handle(
+    "local:read-file-head",
+    async (
+      event,
+      input: { filePath: string; maxBytes?: number },
+    ): Promise<LocalFilePayload | null> => {
+      const filePath = input?.filePath;
+      if (!fromApp(event) || typeof filePath !== "string" || !filePath) {
+        return null;
+      }
+      const resolved = path.resolve(filePath);
+      if (!isPathApproved(resolved)) return null;
+      const limit = Math.min(Math.max(input?.maxBytes ?? 524_288, 4096), 2_097_152);
+      let handle: fsp.FileHandle | null = null;
+      try {
+        handle = await fsp.open(resolved, "r");
+        const stat = await handle.stat();
+        const toRead = Math.min(stat.size, limit);
+        const buf = Buffer.allocUnsafe(toRead);
+        const { bytesRead } = await handle.read(buf, 0, toRead, 0);
+        const ext = path.extname(resolved).toLowerCase();
+        return {
+          path: resolved,
+          name: path.basename(resolved),
+          mimeType: MIME_BY_EXT[ext] ?? "application/octet-stream",
+          bytes: new Uint8Array(buf.subarray(0, bytesRead)),
+        };
+      } catch {
+        return null;
+      } finally {
+        await handle?.close().catch(() => {});
+      }
     },
   );
 

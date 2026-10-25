@@ -9,6 +9,7 @@ export {
   toClientTrackFromOffline,
   importLocalAudioBlobs,
   syncElectronMusicDirectory,
+  scanPcForAudio,
   resolveOfflineTrackBlob,
   notifyOfflineLibraryChanged,
   offlineApi,

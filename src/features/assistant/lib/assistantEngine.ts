@@ -326,17 +326,12 @@ export function executeAssistantPayload(
 
     case "CHANGE_FONT": {
       const val = String(payload.parameters.value || "");
-      const targetSurface = String(payload.parameters.target || "title");
       const fonts = getAllStudioFonts();
       const font =
         fonts.find((f) => f.id === val) ||
         fonts.find((f) => normalize(f.name) === normalize(val));
       if (font) {
-        if (targetSurface === "body" || targetSurface === "ui") {
-          studio.setBodyFont(font.id);
-        } else {
-          studio.setTitleFont(font.id);
-        }
+        studio.setTitleFont(font.id);
       }
       return {};
     }
@@ -470,11 +465,11 @@ export function evaluateBuiltinAssistant(promptRaw: string): AssistantTurnResult
     }
 
     const chosen = best[0];
-    const reply = `Switched the ${targetSurface === "body" ? "interface" : "title"} typography to **${chosen.name}**.`;
+    const reply = `Switched the music title font to **${chosen.name}**.`;
     const payload: AssistantActionPayload = {
       action: "CHANGE_FONT",
       parameters: {
-        target: targetSurface,
+        target: "title",
         value: chosen.name,
         filters: { fontId: chosen.id, category: chosen.category },
       },

@@ -157,7 +157,10 @@ function TrackCard({
       </div>
 
       <div className="flex flex-col mt-[8px]">
-        <span className="truncate text-[14px] font-[500] text-text-primary">
+        <span
+          data-music-title="true"
+          className="truncate text-[14px] font-[500] text-text-primary"
+        >
           {item.item.title}
         </span>
         <div className="flex min-w-0 items-center overflow-hidden text-[13px] text-text-tertiary">

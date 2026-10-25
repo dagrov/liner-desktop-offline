@@ -44,7 +44,6 @@ async function ensureCustomFontRegistered(
 export function useStudioTypographySync(): void {
   const customFonts = useStudioStore((s) => s.customFonts);
   const activeTitleFontId = useStudioStore((s) => s.activeTitleFontId);
-  const activeBodyFontId = useStudioStore((s) => s.activeBodyFontId);
   const syncedFontsFolder = useStudioStore((s) => s.syncedFontsFolder);
   const syncedCoversFolder = useStudioStore((s) => s.syncedCoversFolder);
 
@@ -55,21 +54,20 @@ export function useStudioTypographySync(): void {
     }
   }, [customFonts]);
 
-  // Apply active Title & Body typography variables across Liner
+  // Apply custom font STRICTLY to music track title elements ([data-music-title="true"])
+  // without altering Liner's application UI font
   useEffect(() => {
     if (typeof document === "undefined") return;
     const allFonts = [...customFonts, ...STARTER_FONTS];
     const titleFont =
       allFonts.find((f) => f.id === activeTitleFontId) ?? STARTER_FONTS[0];
-    const bodyFont =
-      allFonts.find((f) => f.id === activeBodyFontId) ?? STARTER_FONTS[1];
 
     const root = document.documentElement;
-    root.style.setProperty("--font-montserrat-family", titleFont.cssFamily);
-    root.style.setProperty("--font-title-family", titleFont.cssFamily);
-    root.style.setProperty("--font-inter", bodyFont.cssFamily);
-    root.style.setProperty("--blyrics-font-family", titleFont.cssFamily);
-    document.body.style.fontFamily = bodyFont.cssFamily;
+    // Ensure no legacy global UI font overrides linger
+    root.style.removeProperty("--font-montserrat-family");
+    root.style.removeProperty("--font-inter");
+    document.body.style.removeProperty("font-family");
+    root.style.setProperty("--font-music-title", titleFont.cssFamily);
 
     let styleEl = document.getElementById(
       STYLE_ELEMENT_ID,
@@ -84,19 +82,12 @@ export function useStudioTypographySync(): void {
       ? `letter-spacing: ${titleFont.letterSpacing};`
       : "";
     styleEl.textContent = `
-      .font-montserrat,
-      .font-roboto-flex-heading,
-      h1, h2, h3,
-      [data-liner-title="true"] {
+      [data-music-title="true"] {
         font-family: ${titleFont.cssFamily} !important;
         ${spacingRule}
       }
-      braccato-lyrics {
-        --blyrics-font-family: ${titleFont.cssFamily};
-        font-family: ${titleFont.cssFamily};
-      }
     `;
-  }, [customFonts, activeTitleFontId, activeBodyFontId]);
+  }, [customFonts, activeTitleFontId]);
 
   // Watch synced Electron folders for fonts & covers
   useEffect(() => {

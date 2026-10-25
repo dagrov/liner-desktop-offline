@@ -27,127 +27,25 @@ export function svgToDataUrl(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg.trim())}`;
 }
 
+export const VINYL_COVER_DATA_URL = svgToDataUrl(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+    <rect width="1000" height="1000" fill="#121214"/>
+    <circle cx="500" cy="500" r="390" fill="#09090b" stroke="#27272a" stroke-width="4"/>
+    <circle cx="500" cy="500" r="330" fill="none" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="500" cy="500" r="270" fill="none" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="500" cy="500" r="210" fill="none" stroke="#27272a" stroke-width="1.5"/>
+    <circle cx="500" cy="500" r="130" fill="#e11d48"/>
+    <circle cx="500" cy="500" r="22" fill="#121214"/>
+  </svg>
+`);
+
 export const SAMPLE_COVERS = {
-  midnightGlass: svgToDataUrl(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-      <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#071126"/>
-          <stop offset="52%" stop-color="#0f294a"/>
-          <stop offset="100%" stop-color="#090c16"/>
-        </linearGradient>
-        <radialGradient id="orb" cx="62%" cy="38%" r="48%">
-          <stop offset="0%" stop-color="#5eead4" stop-opacity="0.85"/>
-          <stop offset="45%" stop-color="#38bdf8" stop-opacity="0.45"/>
-          <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="1000" height="1000" fill="url(#bg)"/>
-      <circle cx="610" cy="390" r="410" fill="url(#orb)"/>
-      <rect x="140" y="180" width="520" height="640" rx="34" fill="#ffffff" fill-opacity="0.06" stroke="#99f6e4" stroke-opacity="0.28" stroke-width="2"/>
-      <line x1="140" y1="520" x2="860" y2="520" stroke="#38bdf8" stroke-opacity="0.35" stroke-width="2"/>
-      <circle cx="380" cy="520" r="145" fill="none" stroke="#e0f2fe" stroke-opacity="0.55" stroke-width="3"/>
-      <circle cx="380" cy="520" r="68" fill="#5eead4" fill-opacity="0.22"/>
-    </svg>
-  `),
-  velvetStatic: svgToDataUrl(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-      <defs>
-        <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#1a092b"/>
-          <stop offset="55%" stop-color="#4c1147"/>
-          <stop offset="100%" stop-color="#12061c"/>
-        </linearGradient>
-        <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#fb7185"/>
-          <stop offset="55%" stop-color="#f59e0b"/>
-          <stop offset="100%" stop-color="#ec4899"/>
-        </linearGradient>
-      </defs>
-      <rect width="1000" height="1000" fill="url(#bg2)"/>
-      <circle cx="500" cy="460" r="250" fill="url(#sun)"/>
-      <rect x="200" y="490" width="600" height="14" fill="#2c0b3a"/>
-      <rect x="200" y="530" width="600" height="20" fill="#2c0b3a"/>
-      <rect x="200" y="578" width="600" height="28" fill="#2c0b3a"/>
-      <rect x="200" y="634" width="600" height="36" fill="#2c0b3a"/>
-      <path d="M0 700 L1000 700 M0 760 L1000 760 M0 835 L1000 835 M0 925 L1000 925" stroke="#f472b6" stroke-opacity="0.38" stroke-width="2"/>
-    </svg>
-  `),
-  paperLanterns: svgToDataUrl(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-      <defs>
-        <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#1f1a17"/>
-          <stop offset="55%" stop-color="#3b2b20"/>
-          <stop offset="100%" stop-color="#161210"/>
-        </linearGradient>
-        <radialGradient id="glow3" cx="50%" cy="46%" r="42%">
-          <stop offset="0%" stop-color="#fde68a" stop-opacity="0.92"/>
-          <stop offset="48%" stop-color="#f97316" stop-opacity="0.45"/>
-          <stop offset="100%" stop-color="#1f1a17" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="1000" height="1000" fill="url(#bg3)"/>
-      <circle cx="500" cy="460" r="390" fill="url(#glow3)"/>
-      <rect x="360" y="270" width="280" height="380" rx="120" fill="#fef3c7" fill-opacity="0.16" stroke="#fdba74" stroke-opacity="0.55" stroke-width="3"/>
-      <line x1="360" y1="390" x2="640" y2="390" stroke="#fed7aa" stroke-opacity="0.35" stroke-width="2"/>
-      <line x1="360" y1="520" x2="640" y2="520" stroke="#fed7aa" stroke-opacity="0.35" stroke-width="2"/>
-    </svg>
-  `),
-  solarisDrift: svgToDataUrl(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-      <defs>
-        <linearGradient id="bg4" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#0b1020"/>
-          <stop offset="50%" stop-color="#1e1b4b"/>
-          <stop offset="100%" stop-color="#090a14"/>
-        </linearGradient>
-      </defs>
-      <rect width="1000" height="1000" fill="url(#bg4)"/>
-      <circle cx="500" cy="500" r="330" fill="none" stroke="#c7d2fe" stroke-opacity="0.28" stroke-width="2"/>
-      <circle cx="500" cy="500" r="235" fill="none" stroke="#a5b4fc" stroke-opacity="0.45" stroke-width="2"/>
-      <circle cx="500" cy="500" r="135" fill="#818cf8" fill-opacity="0.22" stroke="#e0e7ff" stroke-opacity="0.7" stroke-width="3"/>
-      <circle cx="735" cy="500" r="24" fill="#fde047"/>
-      <circle cx="335" cy="335" r="14" fill="#c7d2fe"/>
-    </svg>
-  `),
-  chromeBoulevard: svgToDataUrl(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-      <defs>
-        <linearGradient id="bg5" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#041f1e"/>
-          <stop offset="50%" stop-color="#064e3b"/>
-          <stop offset="100%" stop-color="#022c22"/>
-        </linearGradient>
-        <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#34d399"/>
-          <stop offset="50%" stop-color="#22d3ee"/>
-          <stop offset="100%" stop-color="#a7f3d0"/>
-        </linearGradient>
-      </defs>
-      <rect width="1000" height="1000" fill="url(#bg5)"/>
-      <polygon points="160,820 460,180 540,180 840,820" fill="url(#beam)" fill-opacity="0.22"/>
-      <line x1="500" y1="180" x2="500" y2="820" stroke="#6ee7b7" stroke-width="4" stroke-opacity="0.8"/>
-      <circle cx="500" cy="360" r="95" fill="none" stroke="#a7f3d0" stroke-width="3" stroke-opacity="0.65"/>
-    </svg>
-  `),
-  rainOnCedar: svgToDataUrl(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-      <defs>
-        <linearGradient id="bg6" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#18221d"/>
-          <stop offset="58%" stop-color="#28382f"/>
-          <stop offset="100%" stop-color="#101714"/>
-        </linearGradient>
-      </defs>
-      <rect width="1000" height="1000" fill="url(#bg6)"/>
-      <circle cx="500" cy="340" r="140" fill="#d9f99d" fill-opacity="0.16"/>
-      <polygon points="180,820 420,430 660,820" fill="#3f6212" fill-opacity="0.45"/>
-      <polygon points="360,820 610,380 860,820" fill="#365314" fill-opacity="0.62"/>
-      <line x1="280" y1="200" x2="250" y2="310" stroke="#bef264" stroke-opacity="0.28" stroke-width="2"/>
-      <line x1="680" y1="220" x2="650" y2="330" stroke="#bef264" stroke-opacity="0.28" stroke-width="2"/>
-    </svg>
-  `),
+  midnightGlass: VINYL_COVER_DATA_URL,
+  velvetStatic: VINYL_COVER_DATA_URL,
+  paperLanterns: VINYL_COVER_DATA_URL,
+  solarisDrift: VINYL_COVER_DATA_URL,
+  chromeBoulevard: VINYL_COVER_DATA_URL,
+  rainOnCedar: VINYL_COVER_DATA_URL,
 };
 
 export const SAMPLE_TRACKS: SampleTrackEntry[] = [

@@ -1,4 +1,4 @@
-import { svgToDataUrl } from "./sampleLibrary";
+import { VINYL_COVER_DATA_URL } from "./sampleLibrary";
 
 export interface ParsedAudioMetadata {
   title: string;
@@ -10,43 +10,8 @@ export interface ParsedAudioMetadata {
   durationMs: number;
 }
 
-const PALETTES: [string, string, string][] = [
-  ["#0f172a", "#1e3a8a", "#38bdf8"],
-  ["#1f122b", "#581c87", "#e879f9"],
-  ["#052e16", "#065f46", "#34d399"],
-  ["#271710", "#7c2d12", "#fb923c"],
-  ["#18181b", "#3f3f46", "#e4e4e7"],
-  ["#1e1b4b", "#312e81", "#818cf8"],
-];
-
-export function generateProceduralTrackCover(seedText: string): string {
-  let hash = 0;
-  for (let i = 0; i < seedText.length; i++) {
-    hash = (hash * 31 + seedText.charCodeAt(i)) >>> 0;
-  }
-  const [c1, c2, accent] = PALETTES[hash % PALETTES.length];
-  const cx = 320 + (hash % 360);
-  const cy = 300 + ((hash >> 4) % 360);
-  const r = 160 + ((hash >> 8) % 140);
-
-  return svgToDataUrl(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="${c1}"/>
-          <stop offset="100%" stop-color="${c2}"/>
-        </linearGradient>
-        <radialGradient id="o" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="${accent}" stop-opacity="0.72"/>
-          <stop offset="100%" stop-color="${c1}" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="1000" height="1000" fill="url(#g)"/>
-      <circle cx="${cx}" cy="${cy}" r="${r * 1.9}" fill="url(#o)"/>
-      <circle cx="500" cy="500" r="240" fill="none" stroke="${accent}" stroke-opacity="0.4" stroke-width="2.5"/>
-      <circle cx="500" cy="500" r="78" fill="${accent}" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
-    </svg>
-  `);
+export function generateProceduralTrackCover(_seedText?: string): string {
+  return VINYL_COVER_DATA_URL;
 }
 
 export function inferFromFilename(fileName: string): {
@@ -291,5 +256,31 @@ export async function extractAudioMetadata(
     coverUrl:
       tags.coverUrl || generateProceduralTrackCover(`${artists}::${title}`),
     durationMs,
+  };
+}
+
+export function extractAudioMetadataFromHeaderBytes(
+  headerBytes: Uint8Array,
+  fileName: string,
+  fileSizeBytes?: number,
+): ParsedAudioMetadata {
+  const fallback = inferFromFilename(fileName);
+  const tags = parseId3v2FromBytes(headerBytes);
+  const title = tags.title || fallback.title;
+  const artists = tags.artists || fallback.artists;
+  // Rough duration estimate from file size (~192kbps average) until exact duration is probed during playback
+  const estimatedMs =
+    fileSizeBytes && fileSizeBytes > 0
+      ? Math.min(Math.max(Math.round((fileSizeBytes / 24_000) * 1000), 15_000), 900_000)
+      : 180_000;
+
+  return {
+    title,
+    artists,
+    albumTitle: tags.albumTitle || "Local Library",
+    genre: tags.genre,
+    year: tags.year,
+    coverUrl: tags.coverUrl || VINYL_COVER_DATA_URL,
+    durationMs: estimatedMs,
   };
 }

@@ -53,6 +53,7 @@ describe("getBrowserLocale", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it.each([
+    ["am-ET", "am"],
     ["ru-RU", "ru"],
     ["es-ES", "es"],
     ["uk-UA", "uk"],

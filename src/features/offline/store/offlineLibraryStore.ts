@@ -33,7 +33,10 @@ import {
   synthesizeSampleTrackWav,
   type SynthPreset,
 } from "../lib/synthAudioGenerator";
-import { extractAudioMetadata } from "../lib/audioMetadataParser";
+import {
+  extractAudioMetadata,
+  extractAudioMetadataFromHeaderBytes,
+} from "../lib/audioMetadataParser";
 
 export interface OfflineTrackRecord {
   id: string;
@@ -96,10 +99,13 @@ interface OfflineLibraryState {
   history: PlaybackHistoryItem[];
   syncedMusicFolder: string | null;
   includeSampleTracks: boolean;
+  autoScanPcOnLaunch: boolean;
+  isScanningPc: boolean;
   seededDefaults: boolean;
 
   ensureSeeded: () => void;
   setIncludeSampleTracks: (enabled: boolean) => void;
+  setAutoScanPcOnLaunch: (enabled: boolean) => void;
   setSyncedMusicFolder: (folder: string | null) => void;
   addOrUpdateCustomTracks: (tracks: OfflineTrackRecord[]) => void;
   removeCustomTrack: (trackId: string) => void;
@@ -210,7 +216,9 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
       savedCollections: [],
       history: [],
       syncedMusicFolder: null,
-      includeSampleTracks: true,
+      includeSampleTracks: false,
+      autoScanPcOnLaunch: true,
+      isScanningPc: false,
       seededDefaults: false,
 
       ensureSeeded: () => {
@@ -221,26 +229,35 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
           playlists:
             state.playlists.length > 0
               ? state.playlists
-              : createStarterPlaylists(),
+              : state.includeSampleTracks
+                ? createStarterPlaylists()
+                : [],
           likedTracks:
             state.likedTracks.length > 0
               ? state.likedTracks
-              : [
-                  {
-                    trackId: "sample:midnight-glass",
-                    likedAt: "2026-10-10T20:00:00.000Z",
-                  },
-                  {
-                    trackId: "sample:velvet-static",
-                    likedAt: "2026-10-11T20:00:00.000Z",
-                  },
-                ],
+              : state.includeSampleTracks
+                ? [
+                    {
+                      trackId: "sample:midnight-glass",
+                      likedAt: "2026-10-10T20:00:00.000Z",
+                    },
+                    {
+                      trackId: "sample:velvet-static",
+                      likedAt: "2026-10-11T20:00:00.000Z",
+                    },
+                  ]
+                : [],
         });
       },
 
       setIncludeSampleTracks: (enabled) => {
         set({ includeSampleTracks: enabled });
+        queryCache.clear();
         notifyOfflineLibraryChanged();
+      },
+
+      setAutoScanPcOnLaunch: (enabled) => {
+        set({ autoScanPcOnLaunch: enabled });
       },
 
       setSyncedMusicFolder: (folder) => set({ syncedMusicFolder: folder }),
@@ -303,8 +320,22 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
       },
     }),
     {
-      name: "liner_offline_library_v1",
+      name: "liner_offline_library_v2",
       storage: createJSONStorage(() => debouncedStorage),
+      partialize: (state) => ({
+        customTracks: state.customTracks,
+        trackCoverOverrides: state.trackCoverOverrides,
+        albumCoverOverrides: state.albumCoverOverrides,
+        trackPlayCounts: state.trackPlayCounts,
+        likedTracks: state.likedTracks,
+        playlists: state.playlists,
+        savedCollections: state.savedCollections,
+        history: state.history,
+        syncedMusicFolder: state.syncedMusicFolder,
+        includeSampleTracks: state.includeSampleTracks,
+        autoScanPcOnLaunch: state.autoScanPcOnLaunch,
+        seededDefaults: state.seededDefaults,
+      }),
     },
   ),
 );
@@ -425,6 +456,75 @@ export async function importLocalAudioBlobs(
   return imported;
 }
 
+async function ingestScannedElectronFiles(
+  scanned: { path: string; name: string; size: number }[],
+): Promise<OfflineTrackRecord[]> {
+  const bridge =
+    typeof window !== "undefined" ? window.linerElectron?.localMedia : undefined;
+  if (!bridge || scanned.length === 0) return [];
+
+  const existingPaths = new Set(
+    useOfflineLibraryStore
+      .getState()
+      .customTracks.map((t) => t.localFilePath)
+      .filter(Boolean),
+  );
+
+  const imported: OfflineTrackRecord[] = [];
+  for (const fileInfo of scanned) {
+    if (existingPaths.has(fileInfo.path)) continue;
+    const payload = bridge.readFileHead
+      ? await bridge.readFileHead(fileInfo.path, 524_288)
+      : await bridge.readFile(fileInfo.path);
+    if (!payload) continue;
+
+    const meta = extractAudioMetadataFromHeaderBytes(
+      payload.bytes,
+      payload.name,
+      fileInfo.size,
+    );
+    const artistSlug = slugify(meta.artists);
+    const albumTitle = meta.albumTitle || "Local Library";
+    const albumSlug = slugify(`${meta.artists}-${albumTitle}`);
+    const idSeed = `local:${slugify(payload.path)}`;
+
+    const record: OfflineTrackRecord = {
+      id: idSeed,
+      title: meta.title,
+      artists: meta.artists,
+      artistId: `artist:${artistSlug}`,
+      albumTitle,
+      albumId: `album:${albumSlug}`,
+      coverUrl: meta.coverUrl,
+      originalCoverUrl: meta.coverUrl,
+      durationMs: meta.durationMs,
+      releaseDate: meta.year ? `${meta.year}-01-01` : undefined,
+      genre: meta.genre || "Local Audio",
+      moods: ["local", ...(meta.genre ? [meta.genre.toLowerCase()] : [])],
+      vibeTags: [
+        "clean",
+        "modern",
+        ...(meta.genre ? [meta.genre.toLowerCase()] : []),
+      ],
+      playCount: 1,
+      source: "local",
+      localFilePath: payload.path,
+      mimeType: payload.mimeType || "audio/mpeg",
+      addedAt: new Date().toISOString(),
+    };
+
+    await linerDb.putTrack(toClientTrackFromOffline(record));
+    imported.push(record);
+    existingPaths.add(payload.path);
+  }
+
+  if (imported.length > 0) {
+    useOfflineLibraryStore.getState().addOrUpdateCustomTracks(imported);
+    queryCache.clear();
+  }
+  return imported;
+}
+
 export async function syncElectronMusicDirectory(
   dirPath: string,
 ): Promise<number> {
@@ -433,34 +533,58 @@ export async function syncElectronMusicDirectory(
   if (!bridge) return 0;
 
   const scanned = await bridge.scanDirectory(dirPath, "music");
-  const existingPaths = new Set(
-    useOfflineLibraryStore
-      .getState()
-      .customTracks.map((t) => t.localFilePath)
-      .filter(Boolean),
-  );
-
-  const toImport: { file: Blob; name: string; localFilePath: string }[] = [];
-  for (const fileInfo of scanned) {
-    if (existingPaths.has(fileInfo.path)) continue;
-    const payload = await bridge.readFile(fileInfo.path);
-    if (!payload) continue;
-    const blob = new Blob([new Uint8Array(payload.bytes)], {
-      type: payload.mimeType,
-    });
-    toImport.push({
-      file: blob,
-      name: payload.name,
-      localFilePath: payload.path,
-    });
-  }
-
-  if (toImport.length > 0) {
-    await importLocalAudioBlobs(toImport);
-  }
+  const imported = await ingestScannedElectronFiles(scanned);
   useOfflineLibraryStore.getState().setSyncedMusicFolder(dirPath);
   void bridge.watchDirectory(dirPath, "music");
-  return toImport.length;
+  return imported.length;
+}
+
+let inFlightPcScan: Promise<{
+  scannedDirs: string[];
+  totalFound: number;
+  newlyImported: number;
+}> | null = null;
+
+export async function scanPcForAudio(): Promise<{
+  scannedDirs: string[];
+  totalFound: number;
+  newlyImported: number;
+}> {
+  if (inFlightPcScan) return inFlightPcScan;
+
+  const bridge =
+    typeof window !== "undefined" ? window.linerElectron?.localMedia : undefined;
+  if (!bridge?.scanPcAudio) {
+    return { scannedDirs: [], totalFound: 0, newlyImported: 0 };
+  }
+
+  inFlightPcScan = (async () => {
+    useOfflineLibraryStore.setState({ isScanningPc: true });
+    try {
+      const { scannedDirs, files } = await bridge.scanPcAudio();
+      const syncedDir = useOfflineLibraryStore.getState().syncedMusicFolder;
+      let combinedFiles = [...files];
+      const allDirs = [...scannedDirs];
+
+      if (syncedDir && !allDirs.includes(syncedDir)) {
+        const extra = await bridge.scanDirectory(syncedDir, "music");
+        combinedFiles = [...combinedFiles, ...extra];
+        allDirs.push(syncedDir);
+      }
+
+      const imported = await ingestScannedElectronFiles(combinedFiles);
+      return {
+        scannedDirs: allDirs,
+        totalFound: combinedFiles.length,
+        newlyImported: imported.length,
+      };
+    } finally {
+      useOfflineLibraryStore.setState({ isScanningPc: false });
+      inFlightPcScan = null;
+    }
+  })();
+
+  return inFlightPcScan;
 }
 
 export async function resolveOfflineTrackBlob(

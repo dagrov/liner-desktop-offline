@@ -3,13 +3,18 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowLeftLine,
   FontSizeLine,
+  RadarLine,
   SparklesFill,
   Upload2Line,
 } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import WindowControls from "@/features/navigation/ui/WindowControls";
 import { useModalStore } from "@/features/library";
-import { pickAndImportMusicFiles } from "@/features/studio";
+import { useOfflineLibraryStore } from "@/features/offline";
+import {
+  pickAndImportMusicFiles,
+  triggerManualPcAudioScan,
+} from "@/features/studio";
 import { useAssistantStore } from "@/features/assistant";
 import { showToast } from "@/shared/ui";
 import logo from "@/assets/logo.svg";
@@ -58,11 +63,30 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
   { className },
   ref,
 ) {
+  const { t } = useTranslation();
   const { pathname } = useLocation();
   const showBack = BACK_BUTTON_ROUTES.includes(pathname);
   const openSettings = useModalStore((s) => s.openSettings);
   const assistantEnabled = useAssistantStore((s) => s.enabled);
   const setCommandBarOpen = useAssistantStore((s) => s.setCommandBarOpen);
+  const isScanningPc = useOfflineLibraryStore((s) => s.isScanningPc);
+
+  const handleQuickScanPc = useCallback(async () => {
+    const res = await triggerManualPcAudioScan();
+    if (res.newlyImported > 0) {
+      showToast(
+        `Added ${res.newlyImported} audio track${res.newlyImported === 1 ? "" : "s"} from PC`,
+        "success",
+      );
+    } else if (res.mode === "electron") {
+      showToast(
+        res.totalFound > 0
+          ? `PC scanned — all ${res.totalFound} audio track${res.totalFound === 1 ? "" : "s"} already in library`
+          : "No audio files found in Music, Downloads, or Desktop folders",
+        "info",
+      );
+    }
+  }, []);
 
   const handleQuickImport = useCallback(async () => {
     const count = await pickAndImportMusicFiles();
@@ -111,23 +135,40 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
         <button
           type="button"
           data-no-window-drag
+          disabled={isScanningPc}
+          onClick={() => void handleQuickScanPc()}
+          title={t("offline.scanPc")}
+          className="h-[36px] px-[12px] rounded-[10px] border-0 bg-bg-glass backdrop-blur-[20px] text-text-secondary hover:text-text-primary hover:bg-white/[0.1] disabled:opacity-60 text-[12.5px] font-[500] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
+        >
+          <RadarLine
+            size={15}
+            className={isScanningPc ? "animate-spin" : undefined}
+          />
+          <span className="hidden sm:inline">
+            {isScanningPc ? t("offline.scanningPc") : t("offline.scanPc")}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          data-no-window-drag
           onClick={() => void handleQuickImport()}
-          title="Import local audio files"
+          title={t("offline.importMusic")}
           className="h-[36px] px-[12px] rounded-[10px] border-0 bg-bg-glass backdrop-blur-[20px] text-text-secondary hover:text-text-primary hover:bg-white/[0.1] text-[12.5px] font-[500] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
         >
           <Upload2Line size={15} />
-          <span className="hidden sm:inline">Import Music</span>
+          <span className="hidden sm:inline">{t("offline.importMusic")}</span>
         </button>
 
         <button
           type="button"
           data-no-window-drag
           onClick={() => openSettings("Studio")}
-          title="Cover Art & Typography Studio"
+          title={t("offline.coversAndFonts")}
           className="h-[36px] px-[12px] rounded-[10px] border-0 bg-bg-glass backdrop-blur-[20px] text-text-secondary hover:text-text-primary hover:bg-white/[0.1] text-[12.5px] font-[500] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
         >
           <FontSizeLine size={15} />
-          <span className="hidden sm:inline">Covers & Fonts</span>
+          <span className="hidden sm:inline">{t("offline.coversAndFonts")}</span>
         </button>
 
         {assistantEnabled && (
@@ -139,7 +180,7 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
             className="h-[36px] px-[12px] rounded-[10px] border border-accent-primary/25 bg-accent-primary/10 backdrop-blur-[20px] text-text-primary hover:bg-accent-primary/20 text-[12.5px] font-[600] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
           >
             <SparklesFill size={14} className="text-accent-primary" />
-            <span className="hidden sm:inline">Assistant</span>
+            <span className="hidden sm:inline">{t("offline.assistant")}</span>
           </button>
         )}
 
