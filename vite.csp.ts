@@ -11,7 +11,7 @@ function contentSecurityPolicy(isDev: boolean): string {
     "default-src 'self'",
     `script-src ${scriptSources.join(" ")}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "font-src 'self' data: blob: https://fonts.gstatic.com",
     "img-src 'self' * http: https: data: blob:",
     "media-src 'self' * http: https: data: blob:",
     "connect-src 'self' * http: https: ws: wss: data: blob:",

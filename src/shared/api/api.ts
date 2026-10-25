@@ -11,6 +11,10 @@ import {
 import { signApiRequest, syncServerTime } from "./requestSigner";
 import { clientCatalog } from "./clientCatalog";
 import { getLocalImportHandler } from "./localImports";
+import {
+  isOfflineModeActive,
+  offlineApi,
+} from "@/features/offline/store/offlineLibraryStore";
 import type { Track } from "@/shared/contracts";
 import { telemetry } from "@/shared/telemetry";
 import type {
@@ -151,7 +155,15 @@ function extractSubFromToken(token: string): string | undefined {
 
 export function mediaUrl(path: string): string {
   if (!path) return "";
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("data:") ||
+    path.startsWith("blob:") ||
+    path.startsWith("file:")
+  ) {
+    return path;
+  }
   return getApiBaseUrl() + (path.startsWith("/") ? path : "/" + path);
 }
 
@@ -572,6 +584,14 @@ export const api = {
   },
 
   getMe(): Promise<AuthUser> {
+    if (isOfflineModeActive()) {
+      return Promise.resolve({
+        id: "offline-user",
+        username: "offline",
+        displayName: "Local Library",
+        email: "local@liner.offline",
+      } as AuthUser);
+    }
     return request<AuthUser>("/v1/me");
   },
 
@@ -632,11 +652,13 @@ export const api = {
     return request<LeaderboardResponse>(`/v1/leaderboards/global?${params}`);
   },
   search(q: string, type: SearchType = "all"): Promise<SearchResponse> {
+    if (isOfflineModeActive()) return offlineApi.search(q, type);
     const params = new URLSearchParams({ q, type });
     return clientCatalog.search(q, type, () => request<SearchResponse>(`/v1/catalog/search?${params}`));
   },
 
   getTrack(id: string): Promise<ApiTrackDetails> {
+    if (isOfflineModeActive()) return offlineApi.getTrack(id);
     return clientCatalog.getTrack(id, () =>
       request<ApiTrackDetails>(`/v1/catalog/tracks/${encodeURIComponent(id)}`),
     );
@@ -653,6 +675,13 @@ export const api = {
     },
   ): Promise<RadioResponse> {
     const history = new Set(options?.history ?? []);
+    if (isOfflineModeActive()) {
+      return offlineApi
+        .getRadio(id, options?.k)
+        .then((response) => ({
+          items: response.items.filter((item) => !history.has(item.id)),
+        }));
+    }
     return clientCatalog
       .getRadio(id, options?.k, () => api.getServerRadio(id, options))
       .then((response) => ({ items: response.items.filter((item) => !history.has(item.id)) }));
@@ -668,6 +697,7 @@ export const api = {
       wave_id?: string;
     },
   ): Promise<RadioResponse> {
+    if (isOfflineModeActive()) return offlineApi.getRadio(id, options?.k);
     if (options?.history && options.history.length > 0) {
       return request<RadioResponse>(
         `/v1/tracks/${encodeURIComponent(id)}/radio`,
@@ -690,34 +720,40 @@ export const api = {
   },
 
   getAlbum(id: string): Promise<ApiAlbumDetails> {
+    if (isOfflineModeActive()) return offlineApi.getAlbum(id);
     return clientCatalog.getAlbum(id, () =>
       request<ApiAlbumDetails>(`/v1/catalog/albums/${encodeURIComponent(id)}`),
     );
   },
 
   getArtistImage(id: string): Promise<string | undefined> {
+    if (isOfflineModeActive()) return offlineApi.getArtistImage(id);
     return clientCatalog.getArtistImage(id);
   },
 
   getArtist(id: string): Promise<ApiArtistDetails> {
+    if (isOfflineModeActive()) return offlineApi.getArtist(id);
     return clientCatalog.getArtist(id, () =>
       request<ApiArtistDetails>(`/v1/catalog/artists/${encodeURIComponent(id)}`),
     );
   },
 
   getPlaylist(id: string): Promise<ApiCatalogPlaylistDetails> {
+    if (isOfflineModeActive()) return offlineApi.getPlaylist(id);
     return clientCatalog.getPlaylist(id, () =>
       request<ApiCatalogPlaylistDetails>(`/v1/catalog/playlists/${encodeURIComponent(id)}`),
     );
   },
 
   listLikedTracks(limit = 100, cursor?: string): Promise<ApiLikedTracksPage> {
+    if (isOfflineModeActive()) return offlineApi.listLikedTracks();
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) params.set("cursor", cursor);
     return request<ApiLikedTracksPage>(`/v1/me/library/tracks?${params}`);
   },
 
   async likeTrack(id: string): Promise<void> {
+    if (isOfflineModeActive()) return offlineApi.likeTrack(id);
     const track = await clientCatalog.resolveSnapshot(id);
     return request<void>(
       `/v1/me/library/tracks/${encodeURIComponent(id)}`,
@@ -726,6 +762,7 @@ export const api = {
   },
 
   unlikeTrack(id: string): Promise<void> {
+    if (isOfflineModeActive()) return offlineApi.unlikeTrack(id);
     return request<void>(
       `/v1/me/library/tracks/${encodeURIComponent(id)}`,
       { method: "DELETE" },
@@ -735,6 +772,7 @@ export const api = {
   listSavedCollections(
     type: "albums" | "artists" | "playlists",
   ): Promise<{ items: unknown[] }> {
+    if (isOfflineModeActive()) return offlineApi.listSavedCollections(type);
     return request<{ items: unknown[] }>(`/v1/me/library/${type}`);
   },
 
@@ -745,6 +783,7 @@ export const api = {
     id: string,
     snapshot?: Record<string, unknown>,
   ): Promise<void> {
+    if (isOfflineModeActive()) return offlineApi.saveCollection(type, id, snapshot);
     return request<void>(
       `/v1/me/library/${type}/${encodeURIComponent(id)}`,
       { method: "PUT", ...(snapshot ? { body: JSON.stringify({ snapshot }) } : {}) },
@@ -752,6 +791,7 @@ export const api = {
   },
 
   removeCollection(type: "albums" | "artists" | "playlists", id: string): Promise<void> {
+    if (isOfflineModeActive()) return offlineApi.removeCollection(type, id);
     return request<void>(
       `/v1/me/library/${type}/${encodeURIComponent(id)}`,
       { method: "DELETE" },
@@ -759,12 +799,14 @@ export const api = {
   },
 
   listPlaylists(): Promise<{ items: ApiUserPlaylist[] }> {
+    if (isOfflineModeActive()) return offlineApi.listPlaylists();
     return request<{ items: ApiUserPlaylist[] }>("/v1/me/playlists");
   },
 
   getUserPlaylist(
     id: string,
   ): Promise<{ playlist: ApiUserPlaylist; items: ApiUserPlaylistItem[] }> {
+    if (isOfflineModeActive()) return offlineApi.getUserPlaylist(id);
     return request<{
       playlist: ApiUserPlaylist;
       items: ApiUserPlaylistItem[];
@@ -776,6 +818,7 @@ export const api = {
     description?: string;
     isPublic?: boolean;
   }): Promise<ApiUserPlaylist> {
+    if (isOfflineModeActive()) return offlineApi.createPlaylist(input);
     return request<ApiUserPlaylist>("/v1/me/playlists", {
       method: "POST",
       body: JSON.stringify(input),
@@ -786,6 +829,7 @@ export const api = {
     id: string,
     input: { title?: string; description?: string | null; isPublic?: boolean },
   ): Promise<ApiUserPlaylist> {
+    if (isOfflineModeActive()) return offlineApi.updatePlaylist(id, input);
     return request<ApiUserPlaylist>(
       `/v1/me/playlists/${encodeURIComponent(id)}`,
       { method: "PATCH", body: JSON.stringify(input) },
@@ -793,6 +837,7 @@ export const api = {
   },
 
   deletePlaylist(id: string): Promise<void> {
+    if (isOfflineModeActive()) return offlineApi.deletePlaylist(id);
     return request<void>(`/v1/me/playlists/${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
@@ -803,6 +848,7 @@ export const api = {
     trackId: string,
     snapshot?: ApiTrackBase,
   ): Promise<ApiUserPlaylistItem> {
+    if (isOfflineModeActive()) return offlineApi.addPlaylistTrack(playlistId, trackId);
     const track = snapshot ?? (await clientCatalog.resolveSnapshot(trackId));
     return request<ApiUserPlaylistItem>(
       `/v1/me/playlists/${encodeURIComponent(playlistId)}/tracks/${encodeURIComponent(trackId)}`,
@@ -814,6 +860,7 @@ export const api = {
     playlistId: string,
     tracks: ApiTrackBase[],
   ): Promise<{ items: ApiUserPlaylistItem[]; added: number; rejected: number }> {
+    if (isOfflineModeActive()) return offlineApi.addPlaylistTrackSnapshots(playlistId, tracks);
     return request<{ items: ApiUserPlaylistItem[]; added: number; rejected: number }>(
       `/v1/me/playlists/${encodeURIComponent(playlistId)}/tracks`,
       { method: "POST", body: JSON.stringify({ tracks }) },
@@ -823,6 +870,7 @@ export const api = {
   },
 
   removePlaylistItem(playlistId: string, itemId: string): Promise<void> {
+    if (isOfflineModeActive()) return offlineApi.removePlaylistItem(playlistId, itemId);
     return request<void>(
       `/v1/me/playlists/${encodeURIComponent(playlistId)}/items/${encodeURIComponent(itemId)}`,
       { method: "DELETE" },
@@ -835,6 +883,7 @@ export const api = {
     beforeItemId: string | null,
     revision: number,
   ): Promise<{ playlist: ApiUserPlaylist; items: ApiUserPlaylistItem[] }> {
+    if (isOfflineModeActive()) return offlineApi.movePlaylistItem(playlistId, itemId, beforeItemId);
     return request<{
       playlist: ApiUserPlaylist;
       items: ApiUserPlaylistItem[];
@@ -892,6 +941,10 @@ export const api = {
     signal?: AbortSignal,
     hint?: { title: string; artist: string; durationMs?: number },
   ): AsyncGenerator<LyricsStreamEvent> {
+    if (isOfflineModeActive()) {
+      yield* offlineApi.streamLyrics(id);
+      return;
+    }
     const hintParams =
       hint?.title.trim() && hint.artist.trim()
         ? new URLSearchParams({
@@ -996,6 +1049,7 @@ export const api = {
 
 
   recordPlaybackEvent(payload: RecordPlaybackEventRequest): Promise<void> {
+    if (isOfflineModeActive()) return offlineApi.recordPlaybackEvent(payload);
     return request<void>("/v1/me/playback/events", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -1003,6 +1057,7 @@ export const api = {
   },
 
   getHistory(cursor?: string, limit = 30): Promise<PlaybackHistoryResponse> {
+    if (isOfflineModeActive()) return offlineApi.getHistory(cursor, limit);
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) params.set("cursor", cursor);
     return request<PlaybackHistoryResponse>(`/v1/me/history?${params}`);
@@ -1012,6 +1067,7 @@ export const api = {
     window: PopularTimeWindow = "7d",
     limit = 50,
   ): Promise<PopularTracksResponse> {
+    if (isOfflineModeActive()) return offlineApi.getPopularTracks(window, limit);
     const params = new URLSearchParams({ window, limit: String(limit) });
     return request<PopularTracksResponse>(`/v1/explore/popular?${params}`);
   },
@@ -1020,6 +1076,7 @@ export const api = {
     window: PopularTimeWindow = "7d",
     limit = 20,
   ): Promise<PopularAlbumsResponse> {
+    if (isOfflineModeActive()) return offlineApi.getPopularAlbums(window, limit);
     const params = new URLSearchParams({ window, limit: String(limit) });
     return request<PopularAlbumsResponse>(
       `/v1/explore/popular/albums?${params}`,
@@ -1027,11 +1084,13 @@ export const api = {
   },
 
   getMostSaved(type: MostSavedType = "all", limit = 20): Promise<MostSavedResponse> {
+    if (isOfflineModeActive()) return offlineApi.getMostSaved(type, limit);
     const params = new URLSearchParams({ type, limit: String(limit) });
     return request<MostSavedResponse>(`/v1/explore/most-saved?${params}`);
   },
 
   getDailyMixes(): Promise<DailyMixesResponse> {
+    if (isOfflineModeActive()) return offlineApi.getDailyMixes();
     return request<DailyMixesResponse>("/v1/me/recommendations/daily-mixes");
   },
 };

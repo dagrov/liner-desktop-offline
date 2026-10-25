@@ -7,3 +7,6 @@ export { OverlayTab } from "./OverlayTab";
 export { DiscordTab } from "./DiscordTab";
 export { YoutubeTab } from "./YoutubeTab";
 export { CustomizationTab } from "./CustomizationTab";
+export { LocalLibraryTab } from "./LocalLibraryTab";
+export { StudioTab } from "./StudioTab";
+export { AssistantTab } from "./AssistantTab";

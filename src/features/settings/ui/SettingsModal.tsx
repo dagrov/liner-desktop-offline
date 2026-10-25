@@ -8,6 +8,9 @@ import {
   DiscordFill,
   KeyboardLine,
   YoutubeFill,
+  FolderOpenLine,
+  SparklesFill,
+  FontSizeLine,
 } from "@mingcute/react";
 import {
   Play,
@@ -36,16 +39,22 @@ import {
   OverlayTab,
   DiscordTab,
   YoutubeTab,
+  LocalLibraryTab,
+  StudioTab,
+  AssistantTab,
 } from "./tabs";
 
 type TabId =
+  | "LocalLibrary"
   | "Playback"
   | "Shortcuts"
-  | "Overlay"
-  | "Discord"
-  | "Youtube"
+  | "Studio"
   | "Appearance"
   | "Customization"
+  | "Overlay"
+  | "Assistant"
+  | "Discord"
+  | "Youtube"
   | "Storage"
   | "About";
 
@@ -53,9 +62,12 @@ const navGroupClass =
   "flex flex-col gap-[1px] rounded-[14px] bg-bg-surface/70 p-[4px] dark:bg-white/[0.06]";
 
 const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
+  LocalLibrary: FolderOpenLine,
   Playback: Play,
   Shortcuts: KeyboardLine,
+  Studio: FontSizeLine,
   Overlay: Widget5,
+  Assistant: SparklesFill,
   Discord: DiscordFill,
   Youtube: YoutubeFill,
   Appearance: Palette,
@@ -67,9 +79,12 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
 type TabGroupKey = "player" | "interface" | "integrations" | "application";
 
 const TAB_GROUPS: { labelKey: TabGroupKey; ids: TabId[] }[] = [
-  { labelKey: "player", ids: ["Playback", "Shortcuts"] },
-  { labelKey: "interface", ids: ["Appearance", "Customization", "Overlay"] },
-  { labelKey: "integrations", ids: ["Youtube", "Discord"] },
+  { labelKey: "player", ids: ["LocalLibrary", "Playback", "Shortcuts"] },
+  {
+    labelKey: "interface",
+    ids: ["Studio", "Appearance", "Customization", "Overlay"],
+  },
+  { labelKey: "integrations", ids: ["Assistant", "Youtube", "Discord"] },
   { labelKey: "application", ids: ["Storage", "About"] },
 ];
 
@@ -276,9 +291,32 @@ const font = { fontFamily: "var(--font-inter), sans-serif" } as const;
 export default function SettingsModal() {
   const { t } = useTranslation();
   const open = useModalStore((state) => state.settingsOpen);
+  const initialTab = useModalStore((state) => state.settingsInitialTab);
   const close = useModalStore((state) => state.closeSettings);
 
-  const [activeTab, setActiveTab] = useState<TabId>("Playback");
+  const [activeTab, setActiveTab] = useState<TabId>("LocalLibrary");
+
+  useEffect(() => {
+    if (open && initialTab) {
+      const validTabs: TabId[] = [
+        "LocalLibrary",
+        "Playback",
+        "Shortcuts",
+        "Studio",
+        "Appearance",
+        "Customization",
+        "Overlay",
+        "Assistant",
+        "Discord",
+        "Youtube",
+        "Storage",
+        "About",
+      ];
+      if (validTabs.includes(initialTab as TabId)) {
+        setActiveTab(initialTab as TabId);
+      }
+    }
+  }, [open, initialTab]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const {
@@ -294,9 +332,12 @@ export default function SettingsModal() {
   };
 
   const tabLabels: Record<TabId, string> = {
+    LocalLibrary: "Local Library",
     Playback: t("settings.tabs.playback"),
     Shortcuts: t("settings.tabs.shortcuts") || "Shortcuts",
+    Studio: "Covers & Fonts",
     Overlay: t("settings.tabs.overlay") || "Overlay",
+    Assistant: "Music Assistant",
     Discord: t("settings.tabs.discord") || "Discord RPC",
     Youtube: t("settings.tabs.youtube") || "YouTube",
     Appearance: t("settings.tabs.appearance"),
@@ -306,13 +347,19 @@ export default function SettingsModal() {
   };
 
   const tabDescriptions: Record<TabId, string> = {
+    LocalLibrary:
+      "Import local audio files, sync desktop music folders, and manage offline tracks.",
     Playback: t("settings.playback.description"),
     Shortcuts:
       t("settings.shortcuts.description") ||
       "System-wide and player keyboard shortcuts.",
+    Studio:
+      "Customize cover artwork and typography from your starter collection or synced folders.",
     Overlay:
       t("settings.overlay.description") ||
       "Desktop overlay behavior, position and lyrics display.",
+    Assistant:
+      "Optional local LLM and voice music curator (disabled by default).",
     Discord:
       t("settings.discord.description") ||
       "Show what you're listening to on Discord with artwork, artist badge and progress bar.",
@@ -332,10 +379,55 @@ export default function SettingsModal() {
     const query = searchQuery.toLowerCase().trim();
     const set = new Set<TabId>();
 
+    const STATIC_KEYWORDS: Partial<Record<TabId, string[]>> = {
+      LocalLibrary: [
+        "local library",
+        "import audio",
+        "mp3",
+        "flac",
+        "wav",
+        "music folder",
+        "offline",
+        "sample",
+      ],
+      Studio: [
+        "cover",
+        "artwork",
+        "font",
+        "typography",
+        "serif",
+        "sans",
+        "mono",
+        "ttf",
+        "woff2",
+        "studio",
+      ],
+      Assistant: [
+        "assistant",
+        "ai",
+        "llm",
+        "ollama",
+        "voice",
+        "microphone",
+        "json",
+        "command",
+      ],
+    };
+
+    (Object.keys(STATIC_KEYWORDS) as TabId[]).forEach((tabId) => {
+      const words = STATIC_KEYWORDS[tabId] ?? [];
+      if (words.some((w) => w.includes(query) || query.includes(w))) {
+        set.add(tabId);
+      }
+    });
+
     const TAB_LABEL_KEYS: Record<TabId, string> = {
+      LocalLibrary: "settings.tabs.playback",
       Playback: "settings.tabs.playback",
-      Shortcuts: "settings.tabs.shortcuts",
+      Shortcuts: "settings.shortcuts",
+      Studio: "settings.tabs.appearance",
       Overlay: "settings.tabs.overlay",
+      Assistant: "settings.tabs.playback",
       Discord: "settings.tabs.discord",
       Youtube: "settings.tabs.youtube",
       Appearance: "settings.theme.title",
@@ -345,9 +437,12 @@ export default function SettingsModal() {
     };
 
     const TAB_DESC_KEYS: Record<TabId, string> = {
+      LocalLibrary: "settings.playback.description",
       Playback: "settings.playback.description",
       Shortcuts: "settings.shortcuts.description",
+      Studio: "settings.theme.description",
       Overlay: "settings.overlay.description",
+      Assistant: "settings.playback.description",
       Discord: "settings.discord.description",
       Youtube: "settings.youtube.description",
       Appearance: "settings.theme.description",
@@ -641,14 +736,23 @@ export default function SettingsModal() {
               transition={{ duration: 0.12, ease: "easeOut" }}
               className="flex-1 flex flex-col"
             >
+              {activeTab === "LocalLibrary" && (
+                <LocalLibraryTab searchQuery={searchQuery} />
+              )}
               {activeTab === "Playback" && (
                 <PlaybackTab searchQuery={searchQuery} />
               )}
               {activeTab === "Shortcuts" && (
                 <ShortcutsTab searchQuery={searchQuery} />
               )}
+              {activeTab === "Studio" && (
+                <StudioTab searchQuery={searchQuery} />
+              )}
               {activeTab === "Overlay" && (
                 <OverlayTab searchQuery={searchQuery} />
+              )}
+              {activeTab === "Assistant" && (
+                <AssistantTab searchQuery={searchQuery} />
               )}
               {activeTab === "Discord" && (
                 <DiscordTab searchQuery={searchQuery} />

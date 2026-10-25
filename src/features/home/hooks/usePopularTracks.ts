@@ -76,6 +76,23 @@ export function usePopularTracksOnly(limit = 20) {
     };
   }, [limit]);
 
+  useEffect(() => {
+    const refresh = () => {
+      cache.delete(`tracks_7d_${limit}`);
+      void api.getPopularTracks("7d", limit).then((res) => {
+        const items: PopularItem[] = (res.items || []).map((entry) => ({
+          type: "track",
+          item: toClientTrack(entry.track),
+          playCount: entry.playCount,
+        }));
+        cache.set(`tracks_7d_${limit}`, { data: items, timestamp: Date.now() });
+        setData(items);
+      });
+    };
+    window.addEventListener("offline-catalog:changed", refresh);
+    return () => window.removeEventListener("offline-catalog:changed", refresh);
+  }, [limit]);
+
   return { data, isLoading };
 }
 
@@ -114,6 +131,23 @@ export function usePopularTracksAllTime(limit = 20) {
     return () => {
       active = false;
     };
+  }, [limit]);
+
+  useEffect(() => {
+    const refresh = () => {
+      cache.delete(`tracks_all_${limit}`);
+      void api.getPopularTracks("all", limit).then((res) => {
+        const items: PopularItem[] = (res.items || []).map((entry) => ({
+          type: "track",
+          item: toClientTrack(entry.track),
+          playCount: entry.playCount,
+        }));
+        cache.set(`tracks_all_${limit}`, { data: items, timestamp: Date.now() });
+        setData(items);
+      });
+    };
+    window.addEventListener("offline-catalog:changed", refresh);
+    return () => window.removeEventListener("offline-catalog:changed", refresh);
   }, [limit]);
 
   return { data, isLoading };

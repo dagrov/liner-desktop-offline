@@ -11,6 +11,7 @@ import { ReorderDropPlaceholder, FloatingDragCard } from "@/shared/ui";
 import { useListReorder } from "@/shared/hooks";
 import RightDrawerHeader from "./RightDrawerHeader";
 import { useBlockCustomizationStyle } from "@/features/settings/store/customizationStore";
+import { AssistantPanel, useAssistantStore } from "@/features/assistant";
 
 const QUEUE_ITEM_HEIGHT = 68;
 
@@ -205,6 +206,9 @@ export interface RightDrawerProps {
 function RightDrawer({ onClose }: RightDrawerProps) {
   const player = usePlayerState();
   const { t } = useTranslation();
+  const assistantEnabled = useAssistantStore((s) => s.enabled);
+  const [drawerMode, setDrawerMode] = useState<"queue" | "assistant">("queue");
+  const effectiveMode = assistantEnabled ? drawerMode : "queue";
   const queueScrollRef = useRef<HTMLDivElement>(null);
   const drawerStyle = useBlockCustomizationStyle("sidebar");
   const [queueLimit, setQueueLimit] = useState(() =>
@@ -269,9 +273,15 @@ function RightDrawer({ onClose }: RightDrawerProps) {
         }
         onClear={() => playerEngine.clearQueue()}
         onClose={onClose}
+        assistantEnabled={assistantEnabled}
+        activeMode={effectiveMode}
+        onModeChange={setDrawerMode}
       />
 
       <div className="flex-1 overflow-hidden relative z-10">
+        {effectiveMode === "assistant" ? (
+          <AssistantPanel />
+        ) : (
         <div
           ref={queueScrollCallbackRef}
           className="absolute inset-0 overflow-y-auto px-[10px] pt-[6px] pb-[16px]"
@@ -316,6 +326,7 @@ function RightDrawer({ onClose }: RightDrawerProps) {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

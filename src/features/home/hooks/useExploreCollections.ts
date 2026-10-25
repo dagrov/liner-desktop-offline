@@ -34,6 +34,18 @@ function useCachedItems(key: string, load: () => Promise<PopularItem[]>) {
     };
   }, [key, load]);
 
+  useEffect(() => {
+    const refresh = () => {
+      cache.delete(key);
+      void load().then((next) => {
+        cache.set(key, { items: next, timestamp: Date.now() });
+        setItems(next);
+      });
+    };
+    window.addEventListener("offline-catalog:changed", refresh);
+    return () => window.removeEventListener("offline-catalog:changed", refresh);
+  }, [key, load]);
+
   return { items, isLoading };
 }
 

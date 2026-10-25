@@ -8,7 +8,7 @@
     "name": "hkamori",
     "email": "dev@tryliner.fun"
   },
-  "desktopName": "liner",
+  "desktopName": "liner-offline",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -23,22 +23,23 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "electron:build": "tsc -b && vite build && electron-builder",
-    "electron:build:linux": "tsc -b && vite build && electron-builder --linux",
-    "electron:build:win": "pnpm native:build && tsc -b && vite build && electron-builder --win",
-    "electron:build:mac": "tsc -b && vite build && electron-builder --mac",
+    "electron:build": "tsc -b && vite build && electron-builder --publish never",
+    "electron:build:linux": "tsc -b && vite build && electron-builder --linux --publish never",
+    "electron:build:win": "pnpm native:build && tsc -b && vite build && electron-builder --win --publish never",
+    "electron:build:win:nocpp": "tsc -b && vite build && electron-builder --win --publish never",
+    "electron:build:mac": "tsc -b && vite build && electron-builder --mac --publish never",
     "native:build": "pnpm dlx node-gyp@12 rebuild --directory native/snap-preview && node scripts/verify-native-addon.cjs"
   },
   "build": {
-    "appId": "com.hkamori.liner",
-    "productName": "Liner",
-    "executableName": "liner",
-    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "appId": "com.dagrov.liner.offline",
+    "productName": "Liner Offline",
+    "executableName": "liner-offline",
+    "artifactName": "Liner-Offline-${version}-${arch}.${ext}",
     "publish": [
       {
         "provider": "github",
-        "owner": "tryliner",
-        "repo": "desktop"
+        "owner": "dagrov",
+        "repo": "liner-desktop-offline"
       }
     ],
     "directories": {
@@ -58,9 +59,9 @@
       "native/snap-preview/build/Release/snap_preview.node"
     ],
     "linux": {
-      "executableName": "liner",
+      "executableName": "liner-offline",
       "syncDesktopName": true,
-      "maintainer": "hkamori <dev@tryliner.fun>",
+      "maintainer": "dagrov <dev@liner.offline>",
       "icon": "build/icons",
       "target": [
         "AppImage",
@@ -69,21 +70,21 @@
       "category": "Audio"
     },
     "deb": {
-      "packageName": "liner",
-      "artifactName": "liner_${version}_${arch}.${ext}"
+      "packageName": "liner-offline",
+      "artifactName": "liner-offline_${version}_${arch}.${ext}"
     },
     "appImage": {
-      "artifactName": "Liner-${version}.${ext}"
+      "artifactName": "Liner-Offline-${version}.${ext}"
     },
     "win": {
-      "executableName": "liner",
+      "executableName": "Liner Offline",
       "icon": "build/icon.ico",
       "target": [
         "nsis"
       ]
     },
     "nsis": {
-      "artifactName": "Liner-Setup-${version}.${ext}",
+      "artifactName": "Liner-Offline-Setup-${version}.${ext}",
       "allowToChangeInstallationDirectory": true,
       "oneClick": false
     },

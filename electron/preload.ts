@@ -7,6 +7,13 @@ import { startPoTokenWorker } from "./youtube/potoken-preload";
 import type { TvSession as YoutubeTvSession } from "./youtube/tv-session";
 import type { SolveResult as YoutubeSolveResult } from "./youtube/n-solver";
 import type { MainNetResult } from "./netdiag";
+import type {
+  LocalFilePayload,
+  LocalFolderKind,
+  LocalLlmRequestInput,
+  LocalLlmResponseOutput,
+  ScannedLocalFile,
+} from "./local-media-ipc";
 
 export interface DiscordStatus {
   connected: boolean;
@@ -186,6 +193,29 @@ export interface LinerElectronApi {
     playerId: string,
     values: string[],
   ) => Promise<YoutubeSolveResult>;
+  localMedia?: {
+    pickDirectory: (kind?: LocalFolderKind) => Promise<string | null>;
+    pickFiles: (kind?: LocalFolderKind) => Promise<ScannedLocalFile[]>;
+    scanDirectory: (
+      dirPath: string,
+      kind: LocalFolderKind,
+    ) => Promise<ScannedLocalFile[]>;
+    readFile: (filePath: string) => Promise<LocalFilePayload | null>;
+    watchDirectory: (
+      dirPath: string,
+      kind: LocalFolderKind,
+    ) => Promise<boolean>;
+    unwatchDirectory: (
+      dirPath: string,
+      kind: LocalFolderKind,
+    ) => Promise<boolean>;
+    onDirectoryChanged: (
+      cb: (event: { dirPath: string; kind: LocalFolderKind }) => void,
+    ) => () => void;
+  };
+  localLlm?: {
+    request: (input: LocalLlmRequestInput) => Promise<LocalLlmResponseOutput>;
+  };
 }
 
 const isHyprland = Boolean(
@@ -429,6 +459,31 @@ const api: LinerElectronApi = {
   youtubeTvSession: () => ipcRenderer.invoke("youtube:tv-session"),
   youtubeSolveN: (playerId, values) =>
     ipcRenderer.invoke("youtube:solve-n", { playerId, values }),
+  localMedia: {
+    pickDirectory: (kind = "music") =>
+      ipcRenderer.invoke("local:pick-directory", kind),
+    pickFiles: (kind = "music") => ipcRenderer.invoke("local:pick-files", kind),
+    scanDirectory: (dirPath, kind) =>
+      ipcRenderer.invoke("local:scan-directory", { dirPath, kind }),
+    readFile: (filePath) => ipcRenderer.invoke("local:read-file", filePath),
+    watchDirectory: (dirPath, kind) =>
+      ipcRenderer.invoke("local:watch-directory", { dirPath, kind }),
+    unwatchDirectory: (dirPath, kind) =>
+      ipcRenderer.invoke("local:unwatch-directory", { dirPath, kind }),
+    onDirectoryChanged: (cb) => {
+      const listener = (
+        _event: unknown,
+        payload: { dirPath: string; kind: LocalFolderKind },
+      ) => cb(payload);
+      ipcRenderer.on("local:directory-changed", listener);
+      return () => {
+        ipcRenderer.removeListener("local:directory-changed", listener);
+      };
+    },
+  },
+  localLlm: {
+    request: (input) => ipcRenderer.invoke("local:llm-request", input),
+  },
 };
 
 if (location.hostname === "www.youtube.com") {

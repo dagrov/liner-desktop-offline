@@ -146,5 +146,51 @@ export function useDailyMixes() {
     };
   }, [owner]);
 
+  useEffect(() => {
+    const refresh = () => {
+      cache.timestamp = 0;
+      void api.getDailyMixes().then((res) => {
+        const mixes: DailyMix[] = (res.items || []).map((mix) => {
+          const clientTracks = (mix.tracks || []).map((t) => toClientTrack(t));
+          const primaryCover = mix.cover?.url
+            ? mediaUrl(mix.cover.url)
+            : clientTracks[0]?.coverUrl || clientTracks[1]?.coverUrl;
+          const computedArtists = getDailyMixArtists(
+            mix.clusterArtists,
+            clientTracks,
+            4,
+          );
+          const mixItem: DailyMix = {
+            id: mix.id,
+            title: mix.title,
+            description: mix.description,
+            clusterArtists: computedArtists,
+            coverUrl: primaryCover,
+            trackCount: mix.trackCount || clientTracks.length,
+            tracks: clientTracks,
+          };
+          queryCache.set(`collection:playlist:${mix.id}`, {
+            type: "playlist",
+            title: mix.title,
+            author:
+              computedArtists.length > 0
+                ? computedArtists.join(", ")
+                : "Daily Mix",
+            description: mix.description,
+            coverUrl: primaryCover || "",
+            tracks: clientTracks,
+          });
+          return mixItem;
+        });
+        cache.data = mixes;
+        cache.timestamp = Date.now();
+        cache.owner = owner;
+        setData(mixes);
+      });
+    };
+    window.addEventListener("offline-catalog:changed", refresh);
+    return () => window.removeEventListener("offline-catalog:changed", refresh);
+  }, [owner]);
+
   return { data, isLoading };
 }

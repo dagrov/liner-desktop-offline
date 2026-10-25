@@ -1,11 +1,13 @@
 import { useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { Pic2Line } from "@mingcute/react";
 import {
   useIsTrackLiked,
   useLikeTrack,
   useUnlikeTrack,
 } from "@/features/library/hooks";
 import { ArtistLink } from "@/features/artist";
+import { useStudioStore } from "@/features/studio";
 import { useTranslation } from "@/languages";
 import { usePlayerState } from "../hooks/usePlayerState";
 import { LikeMorphIcon } from "./LikeMorphIcon";
@@ -22,6 +24,7 @@ export function FullscreenTrackInfo({ onClose }: FullscreenTrackInfoProps) {
   const isLiked = useIsTrackLiked(track?.id);
   const likeMutation = useLikeTrack();
   const unlikeMutation = useUnlikeTrack();
+  const openCoverPicker = useStudioStore((s) => s.openCoverPicker);
   const togglingRef = useRef(false);
 
   const handleLikeToggle = useCallback(() => {
@@ -60,6 +63,18 @@ export function FullscreenTrackInfo({ onClose }: FullscreenTrackInfoProps) {
           />
         </p>
       </div>
+
+      {track && (
+        <button
+          type="button"
+          title="Change Cover Art"
+          aria-label="Change Cover Art"
+          onClick={() => openCoverPicker(track.id)}
+          className="relative inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border-none bg-[#303030]/50 backdrop-blur-2xl backdrop-saturate-150 cursor-pointer text-white/85 hover:text-white transition-colors duration-200 ease-out hover:bg-[#303030]/65 active:scale-[0.92]"
+        >
+          <Pic2Line size={19} />
+        </button>
+      )}
 
       <button
         type="button"

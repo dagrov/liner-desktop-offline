@@ -51,6 +51,7 @@ import {
 } from "./netdiag.js";
 import { TouchBarManager } from "./touchbar.js";
 import { registerAuthSessionIpc } from "./auth-session-ipc.js";
+import { registerLocalMediaIpc } from "./local-media-ipc.js";
 import { ThumbarController } from "./thumbar.js";
 import { OverlayManager } from "./overlay.js";
 import { detectCompositor } from "./compositor/index.js";
@@ -366,9 +367,10 @@ function createWindow() {
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
+  } else if (process.env.LINER_UPDATER_URL) {
     bundleManager = new BundleManager({
       defaultRendererDist: RENDERER_DIST,
+      updaterUrl: process.env.LINER_UPDATER_URL,
     });
     bundleManager.setMainWindow(mainWindow);
     const manager = bundleManager;
@@ -378,6 +380,8 @@ function createWindow() {
         await manager.updateBeforeLaunch().catch(() => undefined);
       if (!win.isDestroyed()) win.loadFile(manager.getEffectiveIndexPath());
     })();
+  } else {
+    void mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
   mainWindow.once("ready-to-show", () => {
@@ -1439,8 +1443,9 @@ if (!gotTheLock) {
     });
 
     const authSessions = registerAuthSessionIpc();
+    registerLocalMediaIpc(() => mainWindow);
     overlayManager?.bindAuthSource(
-      () => Boolean(authSessions.get()),
+      () => true,
       (listener) => authSessions.onChange(() => listener()),
     );
 
@@ -1895,8 +1900,8 @@ if (!gotTheLock) {
       };
     });
 
-    // automatic update check after window initialization (packaged app only)
-    if (app.isPackaged) {
+    // automatic update check only when explicitly opted in (offline-first build)
+    if (app.isPackaged && process.env.LINER_ENABLE_AUTO_UPDATE === "1") {
       setTimeout(() => {
         autoUpdater.checkForUpdates().catch((err) => {
           console.error(
@@ -1907,12 +1912,14 @@ if (!gotTheLock) {
       }, 4000);
 
       // check for OTA bundles every 15 minutes silently in background
-      setInterval(
-        () => {
-          bundleManager?.checkForUpdates().catch(() => {});
-        },
-        15 * 60 * 1000,
-      );
+      if (bundleManager) {
+        setInterval(
+          () => {
+            bundleManager?.checkForUpdates().catch(() => {});
+          },
+          15 * 60 * 1000,
+        );
+      }
     }
 
     app.on("activate", () => {

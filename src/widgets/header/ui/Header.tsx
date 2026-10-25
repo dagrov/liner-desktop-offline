@@ -1,8 +1,17 @@
 import { forwardRef, memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeftLine } from "@mingcute/react";
+import {
+  ArrowLeftLine,
+  FontSizeLine,
+  SparklesFill,
+  Upload2Line,
+} from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import WindowControls from "@/features/navigation/ui/WindowControls";
+import { useModalStore } from "@/features/library";
+import { pickAndImportMusicFiles } from "@/features/studio";
+import { useAssistantStore } from "@/features/assistant";
+import { showToast } from "@/shared/ui";
 import logo from "@/assets/logo.svg";
 import { cn } from "@/shared/lib";
 
@@ -51,6 +60,19 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
 ) {
   const { pathname } = useLocation();
   const showBack = BACK_BUTTON_ROUTES.includes(pathname);
+  const openSettings = useModalStore((s) => s.openSettings);
+  const assistantEnabled = useAssistantStore((s) => s.enabled);
+  const setCommandBarOpen = useAssistantStore((s) => s.setCommandBarOpen);
+
+  const handleQuickImport = useCallback(async () => {
+    const count = await pickAndImportMusicFiles();
+    if (count > 0) {
+      showToast(
+        `Imported ${count} local audio track${count === 1 ? "" : "s"}`,
+        "success",
+      );
+    }
+  }, []);
 
   return (
     <header
@@ -85,7 +107,42 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
         </div>
       )}
 
-      <div className="flex items-center gap-[8px] mr-[6px] shrink-0">
+      <div className="flex items-center gap-[8px] mr-[6px] shrink-0 ml-auto">
+        <button
+          type="button"
+          data-no-window-drag
+          onClick={() => void handleQuickImport()}
+          title="Import local audio files"
+          className="h-[36px] px-[12px] rounded-[10px] border-0 bg-bg-glass backdrop-blur-[20px] text-text-secondary hover:text-text-primary hover:bg-white/[0.1] text-[12.5px] font-[500] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
+        >
+          <Upload2Line size={15} />
+          <span className="hidden sm:inline">Import Music</span>
+        </button>
+
+        <button
+          type="button"
+          data-no-window-drag
+          onClick={() => openSettings("Studio")}
+          title="Cover Art & Typography Studio"
+          className="h-[36px] px-[12px] rounded-[10px] border-0 bg-bg-glass backdrop-blur-[20px] text-text-secondary hover:text-text-primary hover:bg-white/[0.1] text-[12.5px] font-[500] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
+        >
+          <FontSizeLine size={15} />
+          <span className="hidden sm:inline">Covers & Fonts</span>
+        </button>
+
+        {assistantEnabled && (
+          <button
+            type="button"
+            data-no-window-drag
+            onClick={() => setCommandBarOpen(true)}
+            title="Music Assistant (Ctrl/Cmd+J)"
+            className="h-[36px] px-[12px] rounded-[10px] border border-accent-primary/25 bg-accent-primary/10 backdrop-blur-[20px] text-text-primary hover:bg-accent-primary/20 text-[12.5px] font-[600] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
+          >
+            <SparklesFill size={14} className="text-accent-primary" />
+            <span className="hidden sm:inline">Assistant</span>
+          </button>
+        )}
+
         <div
           data-no-window-drag
           data-no-tooltip="true"

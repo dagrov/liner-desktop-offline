@@ -37,5 +37,20 @@ export function useListeningNow() {
     };
   }, []);
 
+  useEffect(() => {
+    const refresh = () => {
+      cached = null;
+      void api.getPopularTracks("12h", LISTENING_NOW_LIMIT).then((response) => {
+        const next = shuffled(
+          (response.items ?? []).map((entry) => toClientTrack(entry.track)),
+        );
+        cached = { tracks: next, timestamp: Date.now() };
+        setTracks(next);
+      });
+    };
+    window.addEventListener("offline-catalog:changed", refresh);
+    return () => window.removeEventListener("offline-catalog:changed", refresh);
+  }, []);
+
   return { tracks: tracks.slice(0, LISTENING_NOW_LIMIT), isLoading };
 }

@@ -12,6 +12,8 @@ export default defineConfig(({ command, mode }) => {
     if (devSigningSecret) process.env.LINER_DEV_SIGNING_SECRET = devSigningSecret;
   }
 
+  const isWebPreview = process.env.LINER_WEB_PREVIEW === "1";
+
   return {
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -20,24 +22,28 @@ export default defineConfig(({ command, mode }) => {
     react(),
     tailwindcss(),
     contentSecurityPolicyPlugin(),
-    electron({
-      main: {
-        entry: "electron/main.ts",
-      },
-      preload: {
-        input: "electron/preload.ts",
-        vite: {
-          build: {
-            rollupOptions: {
-              output: {
-                format: "cjs",
-                entryFileNames: "preload.cjs",
+    ...(isWebPreview
+      ? []
+      : [
+          electron({
+            main: {
+              entry: "electron/main.ts",
+            },
+            preload: {
+              input: "electron/preload.ts",
+              vite: {
+                build: {
+                  rollupOptions: {
+                    output: {
+                      format: "cjs",
+                      entryFileNames: "preload.cjs",
+                    },
+                  },
+                },
               },
             },
-          },
-        },
-      },
-    }),
+          }),
+        ]),
   ],
   clearScreen: false,
   resolve: {
@@ -49,8 +55,15 @@ export default defineConfig(({ command, mode }) => {
     },
   },
   server: {
+    host: "0.0.0.0",
     port: 5173,
     strictPort: true,
+    allowedHosts: true,
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 5173,
+    allowedHosts: true,
   },
   build: {
     outDir: "dist",

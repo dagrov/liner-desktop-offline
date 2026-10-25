@@ -11,6 +11,11 @@ import {
   toSoundCloudTrackId,
 } from "@/shared/media/soundcloud";
 import { resolveLinerStream } from "@/shared/media/liner/linerPlayback";
+import {
+  isOfflineModeActive,
+  isOfflineTrackId,
+  resolveOfflineTrackBlob,
+} from "@/features/offline/store/offlineLibraryStore";
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
 import {
@@ -126,6 +131,22 @@ export async function resolvePlaybackStream(
   signal?: AbortSignal,
   options: ResolveStreamOptions = {},
 ): Promise<PlaybackStream> {
+  if (isOfflineTrackId(track.id) || isOfflineModeActive()) {
+    const offline = await resolveOfflineTrackBlob(track.id);
+    if (offline) {
+      return {
+        blob: offline.blob,
+        mimeType: offline.mimeType,
+        codec: offline.mimeType.includes("wav") ? "pcm" : "mp3",
+        bitrate: 256_000,
+        contentLength: offline.blob.size,
+        expiresAtMs: null,
+      };
+    }
+    if (isOfflineModeActive()) {
+      throw new Error(`Offline audio file not found for "${track.title}"`);
+    }
+  }
   const progressive = options.progressive ?? false;
   if (toSoundCloudTrackId(track.id))
     return resolveSoundCloud(track, progressive, signal);

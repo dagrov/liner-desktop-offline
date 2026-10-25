@@ -101,7 +101,8 @@ interface ModalState {
 
   // Settings modal
   settingsOpen: boolean;
-  openSettings: () => void;
+  settingsInitialTab: string | null;
+  openSettings: (initialTab?: string) => void;
   closeSettings: () => void;
   toggleSettings: () => void;
 }
@@ -188,7 +189,17 @@ export const useModalStore = create<ModalState>((set) => ({
   toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
 
   settingsOpen: false,
-  openSettings: () => set({ settingsOpen: true }),
-  closeSettings: () => set({ settingsOpen: false }),
-  toggleSettings: () => set((state) => ({ settingsOpen: !state.settingsOpen })),
+  settingsInitialTab: null,
+  openSettings: (initialTab) =>
+    set({
+      settingsOpen: true,
+      settingsInitialTab:
+        typeof initialTab === "string" ? initialTab : null,
+    }),
+  closeSettings: () => set({ settingsOpen: false, settingsInitialTab: null }),
+  toggleSettings: () =>
+    set((state) => ({
+      settingsOpen: !state.settingsOpen,
+      settingsInitialTab: null,
+    })),
 }));

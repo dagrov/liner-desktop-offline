@@ -7,9 +7,12 @@ import {
   LuPlus,
   LuTrash2,
   LuFolderPlus,
+  LuImage,
+  LuRefreshCw,
 } from "react-icons/lu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import { playerEngine } from "../engine/playerEngine";
+import { useStudioStore } from "@/features/studio";
 import {
   usePlaylistsList,
   useLikeTrack,
@@ -137,6 +140,27 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
             onClick: handleLike,
           },
           {
+            id: "change-cover-art",
+            label: "Change Cover Art…",
+            icon: <LuImage size={15} />,
+            onClick: () => {
+              if (!id) return;
+              useStudioStore.getState().openCoverPicker(id);
+            },
+          },
+          {
+            id: "cycle-cover-art",
+            label: "Cycle Cover Art",
+            icon: <LuRefreshCw size={15} />,
+            onClick: () => {
+              if (!id) return;
+              const next = useStudioStore.getState().cycleTrackCover(id);
+              if (next) {
+                showToast(`Cover switched to "${next.label}"`, "info");
+              }
+            },
+          },
+          {
             id: "remove-from-playlist",
             label: t("common.remove_from_playlist"),
             icon: <LuTrash2 size={15} />,
@@ -236,6 +260,27 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
               duration,
               playlists: playlistsData?.playlists ?? [],
             });
+          },
+        },
+        {
+          id: "change-cover-art",
+          label: "Change Cover Art…",
+          icon: <LuImage size={15} />,
+          onClick: () => {
+            if (!id) return;
+            useStudioStore.getState().openCoverPicker(id);
+          },
+        },
+        {
+          id: "cycle-cover-art",
+          label: "Cycle Cover Art",
+          icon: <LuRefreshCw size={15} />,
+          onClick: () => {
+            if (!id) return;
+            const next = useStudioStore.getState().cycleTrackCover(id);
+            if (next) {
+              showToast(`Cover switched to "${next.label}"`, "info");
+            }
           },
         },
       ];
