@@ -15,10 +15,13 @@ export {
 } from "./store/studioStore";
 export { useStudioTypographySync } from "./hooks/useStudioTypographySync";
 export { CoverPickerModal } from "./ui/CoverPickerModal";
+export { LyricsEditorModal } from "./ui/LyricsEditorModal";
 export {
   pickAndImportCoverFiles,
   pickAndImportFontFiles,
   pickAndImportMusicFiles,
+  pickLyricsFile,
+  pickAndAttachLyricsFile,
   pickAndSyncCoversFolder,
   pickAndSyncFontsFolder,
   pickAndSyncMusicFolder,

@@ -1,9 +1,12 @@
 import {
+  getAllOfflineTracks,
   importLocalAudioBlobs,
+  saveTrackCustomLyrics,
   scanPcForAudio,
   syncElectronMusicDirectory,
   useOfflineLibraryStore,
 } from "@/features/offline/store/offlineLibraryStore";
+import { usePlayerStore } from "@/features/player/store/playerStore";
 import {
   importCoverBlobs,
   importFontBlobs,
@@ -13,6 +16,7 @@ import {
 const AUDIO_EXT_RE = /\.(mp3|flac|wav|ogg|m4a|aac|opus|webm)$/i;
 const FONT_EXT_RE = /\.(ttf|otf|woff2|woff)$/i;
 const COVER_EXT_RE = /\.(png|jpg|jpeg|webp|svg|gif)$/i;
+const LYRICS_EXT_RE = /\.(lrc|txt|srt|vtt|ttml)$/i;
 
 function pickBrowserFilesViaInput(options: {
   accept?: string;
@@ -282,24 +286,76 @@ export async function pickAndSyncCoversFolder(): Promise<{
   return { folderLabel: folderName, importedCount: created.length };
 }
 
+export async function pickLyricsFile(): Promise<{
+  content: string;
+  fileName: string;
+} | null> {
+  if (typeof window !== "undefined" && window.linerElectron?.localMedia) {
+    const picked = await window.linerElectron.localMedia.pickFiles("lyrics");
+    const first = picked[0];
+    if (!first) return null;
+    const payload = await window.linerElectron.localMedia.readFile(first.path);
+    if (!payload) return null;
+    const text = new TextDecoder("utf-8").decode(payload.bytes);
+    return { content: text, fileName: payload.name };
+  }
+
+  const files = await pickBrowserFilesViaInput({
+    accept: ".lrc,.txt,.srt,.vtt,.ttml,text/plain",
+    multiple: false,
+  });
+  const file = files[0];
+  if (!file) return null;
+  const content = await file.text();
+  return { content, fileName: file.name };
+}
+
+export async function pickAndAttachLyricsFile(trackId: string): Promise<{
+  saved: boolean;
+  fileName?: string;
+  lineCount: number;
+  syncLevel: string;
+}> {
+  const picked = await pickLyricsFile();
+  if (!picked) {
+    return { saved: false, lineCount: 0, syncLevel: "plain" };
+  }
+  const result = saveTrackCustomLyrics(
+    trackId,
+    picked.content,
+    picked.fileName,
+  );
+  return { ...result, fileName: picked.fileName };
+}
+
+function stemKey(name: string): string {
+  return name
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\u1200-\u137f]+/g, "");
+}
+
 export async function handleDroppedFilesImport(
   fileList: FileList | File[],
-): Promise<{ audio: number; fonts: number; covers: number }> {
+): Promise<{ audio: number; fonts: number; covers: number; lyrics: number }> {
   const files = Array.from(fileList);
   const audioFiles = files.filter(
     (f) => AUDIO_EXT_RE.test(f.name) || f.type.startsWith("audio/"),
   );
   const fontFiles = files.filter((f) => FONT_EXT_RE.test(f.name));
+  const lyricsFiles = files.filter((f) => LYRICS_EXT_RE.test(f.name));
   const coverFiles = files.filter(
     (f) =>
       !FONT_EXT_RE.test(f.name) &&
       !AUDIO_EXT_RE.test(f.name) &&
+      !LYRICS_EXT_RE.test(f.name) &&
       (COVER_EXT_RE.test(f.name) || f.type.startsWith("image/")),
   );
 
   let audio = 0;
   let fonts = 0;
   let covers = 0;
+  let lyrics = 0;
 
   if (audioFiles.length > 0) {
     const res = await importLocalAudioBlobs(
@@ -323,6 +379,35 @@ export async function handleDroppedFilesImport(
     );
     covers = res.length;
   }
+  if (lyricsFiles.length > 0) {
+    const allTracks = getAllOfflineTracks();
+    const currentTrackId = usePlayerStore.getState().currentTrack?.id ?? null;
 
-  return { audio, fonts, covers };
+    for (const file of lyricsFiles) {
+      const content = await file.text().catch(() => "");
+      if (!content.trim()) continue;
+      const key = stemKey(file.name);
+      const matchedTrack =
+        allTracks.find((t) => {
+          const titleKey = stemKey(t.title);
+          const artistTitleKey = stemKey(`${t.artists} ${t.title}`);
+          const filePathKey = t.localFilePath
+            ? stemKey(t.localFilePath.split(/[\\/]/).pop() || "")
+            : "";
+          return (
+            (key && titleKey === key) ||
+            (key && artistTitleKey === key) ||
+            (key && filePathKey === key)
+          );
+        }) ?? null;
+
+      const targetTrackId = matchedTrack?.id ?? currentTrackId;
+      if (targetTrackId) {
+        const res = saveTrackCustomLyrics(targetTrackId, content, file.name);
+        if (res.saved) lyrics++;
+      }
+    }
+  }
+
+  return { audio, fonts, covers, lyrics };
 }

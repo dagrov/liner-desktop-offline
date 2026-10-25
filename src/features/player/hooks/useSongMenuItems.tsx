@@ -9,10 +9,13 @@ import {
   LuFolderPlus,
   LuImage,
   LuRefreshCw,
+  LuFileText,
+  LuUpload,
 } from "react-icons/lu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import { playerEngine } from "../engine/playerEngine";
-import { useStudioStore } from "@/features/studio";
+import { pickAndAttachLyricsFile, useStudioStore } from "@/features/studio";
+import { useOfflineLibraryStore } from "@/features/offline";
 import {
   usePlaylistsList,
   useLikeTrack,
@@ -161,6 +164,38 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
             },
           },
           {
+            id: "edit-track-lyrics",
+            label: t("lyrics_editor.add_or_edit", {
+              defaultValue: "Add / Paste Lyrics…",
+            }),
+            icon: <LuFileText size={15} />,
+            onClick: () => {
+              if (!id) return;
+              useOfflineLibraryStore.getState().openLyricsEditor(id);
+            },
+          },
+          {
+            id: "import-track-lyrics-file",
+            label: t("lyrics_editor.import_file", {
+              defaultValue: "Import Lyrics File…",
+            }),
+            icon: <LuUpload size={15} />,
+            onClick: () => {
+              if (!id) return;
+              void pickAndAttachLyricsFile(id).then((res) => {
+                if (res.saved) {
+                  showToast(
+                    t("lyrics_editor.imported_file_toast", {
+                      defaultValue: "Loaded lyrics from {{name}}",
+                      name: res.fileName || "file",
+                    }),
+                    "success",
+                  );
+                }
+              });
+            },
+          },
+          {
             id: "remove-from-playlist",
             label: t("common.remove_from_playlist"),
             icon: <LuTrash2 size={15} />,
@@ -281,6 +316,38 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
             if (next) {
               showToast(`Cover switched to "${next.label}"`, "info");
             }
+          },
+        },
+        {
+          id: "edit-track-lyrics",
+          label: t("lyrics_editor.add_or_edit", {
+            defaultValue: "Add / Paste Lyrics…",
+          }),
+          icon: <LuFileText size={15} />,
+          onClick: () => {
+            if (!id) return;
+            useOfflineLibraryStore.getState().openLyricsEditor(id);
+          },
+        },
+        {
+          id: "import-track-lyrics-file",
+          label: t("lyrics_editor.import_file", {
+            defaultValue: "Import Lyrics File…",
+          }),
+          icon: <LuUpload size={15} />,
+          onClick: () => {
+            if (!id) return;
+            void pickAndAttachLyricsFile(id).then((res) => {
+              if (res.saved) {
+                showToast(
+                  t("lyrics_editor.imported_file_toast", {
+                    defaultValue: "Loaded lyrics from {{name}}",
+                    name: res.fileName || "file",
+                  }),
+                  "success",
+                );
+              }
+            });
           },
         },
       ];

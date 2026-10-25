@@ -10,8 +10,11 @@ import {
 } from "@/features/lyrics";
 import { AnimatePresence, motion } from "framer-motion";
 import { PlayerUiElements } from "./PlayerUiElements";
-import { DownLine } from "@mingcute/react";
+import { DownLine, Edit2Line, Upload2Line } from "@mingcute/react";
 import { preloadCoverArt, useCoverSrc } from "@/features/covers";
+import { useOfflineLibraryStore } from "@/features/offline";
+import { pickAndAttachLyricsFile } from "@/features/studio";
+import { showToast } from "@/shared/ui/Toast";
 import "@braccato/core/element";
 import "@braccato/core/styles/variables.css";
 import "@braccato/core/styles/lyrics.css";
@@ -347,9 +350,11 @@ export function FullscreenPlayer({
     lyricsLoading,
     lyricsError,
     plainLyrics,
+    rawFormat,
     availableProviders,
     currentLyricsTrackId,
   } = useLyricsStore();
+  const openLyricsEditor = useOfflineLibraryStore((s) => s.openLyricsEditor);
 
   const onError = useCallback((err: Error) => {
     console.error("kawarp load error:", err);
@@ -370,7 +375,17 @@ export function FullscreenPlayer({
   const isMatchingTrack = Boolean(
     currentTrackId && currentLyricsTrackId === currentTrackId,
   );
-  const hasLyrics = isMatchingTrack && braccatoLyrics.length > 0;
+  const hasSyncedTiming =
+    isMatchingTrack &&
+    rawFormat !== "plain" &&
+    braccatoLyrics.some(
+      (line: any) =>
+        (line?.startTimeMs ?? 0) > 0 || (line?.durationMs ?? 0) > 0,
+    );
+  const hasPlainText =
+    isMatchingTrack &&
+    Boolean(plainLyrics && plainLyrics.trim() && plainLyrics !== "[INSTRUMENTAL]");
+  const hasLyrics = isMatchingTrack && (braccatoLyrics.length > 0 || hasPlainText);
   const showProviderIsland = hasLyrics && availableProviders.length > 0;
   const isInstrumental =
     isMatchingTrack &&
@@ -378,6 +393,20 @@ export function FullscreenPlayer({
     !hasLyrics &&
     !lyricsError &&
     plainLyrics === "[INSTRUMENTAL]";
+
+  const handleImportLyricsFromPlayer = async () => {
+    if (!currentTrackId) return;
+    const res = await pickAndAttachLyricsFile(currentTrackId);
+    if (res.saved) {
+      showToast(
+        t("lyrics_editor.imported_file_toast", {
+          defaultValue: "Loaded lyrics from {{name}}",
+          name: res.fileName || "file",
+        }),
+        "success",
+      );
+    }
+  };
 
   return (
     <div
@@ -409,9 +438,23 @@ export function FullscreenPlayer({
         </div>
 
         <div className="flex-1 h-full min-h-0 pl-2 pr-6 flex flex-col relative">
-          {showProviderIsland && (
-            <div className="absolute top-[6px] left-1/2 -translate-x-1/2 z-30 pointer-events-none flex justify-center">
-              <LyricsProviderIsland />
+          {hasLyrics && (
+            <div className="absolute top-[10px] left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pointer-events-none">
+              {showProviderIsland && <LyricsProviderIsland />}
+              {currentTrackId && (
+                <button
+                  type="button"
+                  onClick={() => openLyricsEditor(currentTrackId)}
+                  className="pointer-events-auto h-[30px] px-3 rounded-full border border-white/15 bg-black/45 backdrop-blur-xl text-[12px] font-medium text-white/80 hover:text-white hover:bg-white/15 flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Edit2Line size={13} />
+                  <span>
+                    {t("lyrics_editor.edit_button", {
+                      defaultValue: "Edit Lyrics",
+                    })}
+                  </span>
+                </button>
+              )}
             </div>
           )}
 
@@ -424,14 +467,41 @@ export function FullscreenPlayer({
             <AnimatePresence initial={false}>
               {hasLyrics && (
                 <motion.div
-                  key={`lyrics-${currentTrackId}`}
+                  key={`lyrics-${currentTrackId}-${hasSyncedTiming ? "synced" : "plain"}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, pointerEvents: "none" }}
                   transition={{ duration: 0.22, ease: "easeInOut" }}
                   className="absolute inset-0 flex flex-col"
                 >
-                  <BraccatoLyricsView lyrics={braccatoLyrics} />
+                  {hasSyncedTiming ? (
+                    <BraccatoLyricsView lyrics={braccatoLyrics} />
+                  ) : (
+                    <div
+                      className="flex-1 min-h-0 overflow-y-auto px-6 py-16 flex flex-col gap-4"
+                      style={{
+                        maskImage:
+                          "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
+                        WebkitMaskImage:
+                          "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
+                      }}
+                    >
+                      {(plainLyrics || "")
+                        .split("\n")
+                        .map((line, idx) =>
+                          line.trim() ? (
+                            <p
+                              key={idx}
+                              className="m-0 text-[22px] sm:text-[26px] font-[600] leading-[1.45] text-white/90 tracking-tight"
+                            >
+                              {line}
+                            </p>
+                          ) : (
+                            <div key={idx} className="h-3 shrink-0" />
+                          ),
+                        )}
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -498,11 +568,41 @@ export function FullscreenPlayer({
                     <line x1="2" y1="2" x2="22" y2="22"></line>
                   </svg>
                   <span
-                    className="text-[15px] font-[400] max-w-[250px] text-center"
+                    className="text-[15px] font-[400] max-w-[270px] text-center"
                     style={{ lineHeight: "1.4" }}
                   >
                     {lyricsError || t("player.no_lyrics_found")}
                   </span>
+
+                  {currentTrackId && (
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => openLyricsEditor(currentTrackId)}
+                        className="h-[36px] px-4 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 text-[13px] font-medium text-white flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Edit2Line size={15} />
+                        <span>
+                          {t("lyrics_editor.paste_or_edit", {
+                            defaultValue: "Paste / Add Lyrics",
+                          })}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleImportLyricsFromPlayer()}
+                        className="h-[36px] px-4 rounded-full border border-white/15 bg-black/35 hover:bg-white/15 text-[13px] font-medium text-white/85 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Upload2Line size={15} />
+                        <span>
+                          {t("lyrics_editor.import_file", {
+                            defaultValue: "Import Lyrics File",
+                          })}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ) : null}

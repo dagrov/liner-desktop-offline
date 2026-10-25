@@ -10,7 +10,10 @@ import {
   showToast,
 } from "@/shared/ui";
 import { useWindowDrag } from "@/shared/hooks";
-import { useAppIconSync } from "@/features/player";
+import {
+  FloatingMiniPlayerWidget,
+  useAppIconSync,
+} from "@/features/player";
 import { I18nProvider } from "@/languages";
 import { CoverSwRegistrar } from "@/features/covers";
 import { usePresenceSync } from "@/shared/presence";
@@ -23,6 +26,7 @@ import { useWindowState } from "@/features/navigation/hooks/useWindowState";
 import { OfflineBootstrap } from "@/features/offline";
 import {
   CoverPickerModal,
+  LyricsEditorModal,
   handleDroppedFilesImport,
   useStudioTypographySync,
 } from "@/features/studio";
@@ -126,11 +130,14 @@ function GlobalDropOverlay() {
       if (result.covers > 0) {
         parts.push(`${result.covers} cover${result.covers === 1 ? "" : "s"}`);
       }
+      if (result.lyrics > 0) {
+        parts.push(`${result.lyrics} lyrics file${result.lyrics === 1 ? "" : "s"}`);
+      }
       if (parts.length > 0) {
         showToast(`Imported ${parts.join(", ")}`, "success");
       } else {
         showToast(
-          "Unsupported file format — drop audio (.mp3/.flac/.wav), fonts (.ttf/.otf/.woff2), or images (.png/.jpg/.svg)",
+          "Unsupported file format — drop audio (.mp3/.flac/.wav), lyrics (.lrc/.txt/.srt), fonts (.ttf/.otf/.woff2), or images (.png/.jpg/.svg)",
           "info",
         );
       }
@@ -156,8 +163,8 @@ function GlobalDropOverlay() {
         Drop into Liner Offline Studio
       </div>
       <div className="text-[13px] text-white/70">
-        Audio (.mp3, .flac, .wav, .ogg, .m4a) · Fonts (.ttf, .otf, .woff2) ·
-        Cover Art (.png, .jpg, .webp, .svg)
+        Audio (.mp3, .flac, .wav, .ogg, .m4a) · Lyrics (.lrc, .txt, .srt) ·
+        Fonts (.ttf, .otf, .woff2) · Cover Art (.png, .jpg, .webp, .svg)
       </div>
     </div>
   );
@@ -194,6 +201,8 @@ export default function App() {
                       <AppRoutes />
                     </OfflineShell>
                     <CoverPickerModal />
+                    <LyricsEditorModal />
+                    <FloatingMiniPlayerWidget />
                     <AssistantCommandBar />
                     <GlobalDropOverlay />
                   </WindowAnimationContainer>

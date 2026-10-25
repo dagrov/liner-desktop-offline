@@ -415,7 +415,9 @@
     "preset_nightcore": "1.35x Nightcore",
     "reverb": "Reverb",
     "reverb_hint": "Atmospheric space & ambient depth",
-    "reverb_amount": "Reverb"
+    "reverb_amount": "Reverb",
+    "toggle_mini_widget": "Mini Player Widget",
+    "no_track_playing": "No track playing"
   },
   "playlist": {
     "playlist": "Playlist",
@@ -565,6 +567,12 @@
       "always_on_top": {
         "title": "Always on top",
         "description": "Keep the overlay floating above other windows."
+      },
+      "open_now": {
+        "title": "Show Mini Player Widget",
+        "description": "Open or hide the floating compact mini player widget right now.",
+        "show_btn": "Show Widget",
+        "hide_btn": "Hide Widget"
       }
     },
     "youtube": {
@@ -1070,5 +1078,29 @@
     "copy_code": "Copy code",
     "connected": "YouTube connected",
     "qr_label": "Sign-in QR code"
+  },
+  "lyrics_editor": {
+    "add_or_edit": "Add / Paste Lyrics",
+    "paste_or_edit": "Paste / Add Lyrics",
+    "edit_button": "Edit Lyrics",
+    "import_file": "Import Lyrics File",
+    "paste_clipboard": "Paste Lyrics",
+    "stamp_time": "Stamp {{time}}",
+    "stamp_time_hint": "Insert current playback timestamp [mm:ss.xx] on the active line",
+    "clear_lyrics": "Clear Lyrics",
+    "save_lyrics": "Save Lyrics",
+    "subtitle": "Import a .lrc / .txt / .srt file or paste lyrics below",
+    "placeholder": "Paste plain lyrics or synced LRC timestamps here...\n\n[00:12.40] Example synced lyric line\n[00:16.80] Lines with [mm:ss.xx] highlight automatically as the song plays\n\nOr paste plain text lyrics without timestamps to read along cleanly.",
+    "badge_empty": "Empty",
+    "badge_word_synced": "Word-Synced LRC",
+    "badge_line_synced": "Time-Synced Lyrics",
+    "badge_plain": "Plain Text Lyrics",
+    "lines_count": "{{count}} lines",
+    "formats_hint": ".lrc · .txt · .srt · .vtt · .ttml",
+    "imported_file_toast": "Loaded lyrics from {{name}}",
+    "saved_toast": "Saved lyrics for {{title}} ({{count}} lines)",
+    "cleared_toast": "Cleared custom lyrics for {{title}}",
+    "clipboard_empty": "Clipboard is empty",
+    "paste_shortcut_hint": "Press Ctrl+V / Cmd+V inside the text box to paste"
   }
 }

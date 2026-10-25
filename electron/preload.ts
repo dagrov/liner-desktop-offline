@@ -208,6 +208,9 @@ export interface LinerElectronApi {
       filePath: string,
       maxBytes?: number,
     ) => Promise<LocalFilePayload | null>;
+    readSidecarLyrics: (
+      audioFilePath: string,
+    ) => Promise<{ content: string; fileName: string } | null>;
     readFile: (filePath: string) => Promise<LocalFilePayload | null>;
     watchDirectory: (
       dirPath: string,
@@ -476,6 +479,8 @@ const api: LinerElectronApi = {
     scanPcAudio: () => ipcRenderer.invoke("local:scan-pc-audio"),
     readFileHead: (filePath, maxBytes = 524_288) =>
       ipcRenderer.invoke("local:read-file-head", { filePath, maxBytes }),
+    readSidecarLyrics: (audioFilePath) =>
+      ipcRenderer.invoke("local:read-sidecar-lyrics", audioFilePath),
     readFile: (filePath) => ipcRenderer.invoke("local:read-file", filePath),
     watchDirectory: (dirPath, kind) =>
       ipcRenderer.invoke("local:watch-directory", { dirPath, kind }),

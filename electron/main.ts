@@ -497,6 +497,10 @@ if (!gotTheLock) {
       path.join(__dirname, "preload.cjs"),
       RENDERER_DIST,
     );
+    overlayManager.bindAuthSource(
+      () => true,
+      () => () => {},
+    );
     overlayManager.setIndexPathResolver(
       () =>
         bundleManager?.getEffectiveIndexPath() ??

@@ -9,7 +9,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 
-export type LocalFolderKind = "music" | "fonts" | "covers";
+export type LocalFolderKind = "music" | "fonts" | "covers" | "lyrics";
 
 export interface ScannedLocalFile {
   path: string;
@@ -54,6 +54,7 @@ const EXTENSIONS_BY_KIND: Record<LocalFolderKind, Set<string>> = {
   ]),
   fonts: new Set([".ttf", ".otf", ".woff2", ".woff"]),
   covers: new Set([".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif"]),
+  lyrics: new Set([".lrc", ".txt", ".srt", ".vtt", ".ttml"]),
 };
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -97,6 +98,12 @@ const DIALOG_FILTERS_BY_KIND: Record<
     {
       name: "Cover Art Images",
       extensions: ["png", "jpg", "jpeg", "webp", "svg", "gif"],
+    },
+  ],
+  lyrics: [
+    {
+      name: "Lyrics Files",
+      extensions: ["lrc", "txt", "srt", "vtt", "ttml"],
     },
   ],
 };
@@ -237,6 +244,7 @@ export function registerLocalMediaIpc(getMainWindow: () => BrowserWindow | null)
         music: "Select Local Music Folder",
         fonts: "Select Custom Fonts Folder",
         covers: "Select Cover Art Folder",
+        lyrics: "Select Lyrics Folder",
       };
       const result = win
         ? await dialog.showOpenDialog(win, {
@@ -406,6 +414,44 @@ export function registerLocalMediaIpc(getMainWindow: () => BrowserWindow | null)
       } finally {
         await handle?.close().catch(() => {});
       }
+    },
+  );
+
+  ipcMain.handle(
+    "local:read-sidecar-lyrics",
+    async (
+      event,
+      audioFilePath: string,
+    ): Promise<{ content: string; fileName: string } | null> => {
+      if (
+        !fromApp(event) ||
+        typeof audioFilePath !== "string" ||
+        !audioFilePath
+      ) {
+        return null;
+      }
+      const resolvedAudio = path.resolve(audioFilePath);
+      if (!isPathApproved(resolvedAudio)) return null;
+
+      const parsed = path.parse(resolvedAudio);
+      const sidecarExts = [".lrc", ".srt", ".vtt", ".ttml"];
+      for (const ext of sidecarExts) {
+        const candidatePath = path.join(parsed.dir, `${parsed.name}${ext}`);
+        try {
+          const st = await fsp.stat(candidatePath);
+          if (!st.isFile() || st.size === 0 || st.size > 524_288) continue;
+          const content = await fsp.readFile(candidatePath, "utf8");
+          if (content.trim()) {
+            return {
+              content,
+              fileName: path.basename(candidatePath),
+            };
+          }
+        } catch {
+          // try next extension
+        }
+      }
+      return null;
     },
   );
 

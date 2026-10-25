@@ -16,8 +16,9 @@ import {
   Repeat,
   RepeatOne,
   Shuffle,
+  Widget5,
 } from "@solar-icons/react";
-import { HeartFill, HeartLine } from "@mingcute/react";
+import { Edit2Line, HeartFill, HeartLine } from "@mingcute/react";
 
 import { PlayerMorphIcon, ICON_PLAY, ICON_PAUSE } from "./morphPlayerIcons";
 
@@ -43,6 +44,8 @@ import {
   useBlockCustomizationStyle,
   useHasPageBackdrop,
 } from "@/features/settings/store/customizationStore";
+import { useOverlaySettingsStore } from "@/features/overlay";
+import { useOfflineLibraryStore } from "@/features/offline";
 import { ArtistLink } from "@/features/artist";
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
@@ -340,6 +343,12 @@ function MiniPlayer({
   const lastNonZeroVolumeRef = useRef<number>(0.7);
 
   const currentTrack = player.currentTrack;
+  const openLyricsEditor = useOfflineLibraryStore((s) => s.openLyricsEditor);
+  const toggleMiniPlayerWidget = useOverlaySettingsStore(
+    (s) => s.toggleMiniPlayerWidget,
+  );
+  const inAppWidgetOpen = useOverlaySettingsStore((s) => s.inAppWidgetOpen);
+  const overlayShortcut = useOverlaySettingsStore((s) => s.shortcut);
   const volumeLevel = toVolumeLevel(player.volume);
   const isLiked = useIsTrackLiked(currentTrack?.id);
   const likeMutation = useLikeTrack();
@@ -951,6 +960,47 @@ function MiniPlayer({
                 ) : (
                   <VolumeLoud size={18} weight="Outline" />
                 )}
+              </button>
+              {currentTrack && (
+                <button
+                  type="button"
+                  aria-label={t("lyrics_editor.add_or_edit", {
+                    defaultValue: "Add / Paste Lyrics",
+                  })}
+                  title={t("lyrics_editor.add_or_edit", {
+                    defaultValue: "Add / Paste Lyrics",
+                  })}
+                  className={iconButtonClass}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    setSpeedOpen(false);
+                    setVolumeOpen(false);
+                    openLyricsEditor(currentTrack.id);
+                  }}
+                >
+                  <Edit2Line size={17} />
+                </button>
+              )}
+              <button
+                type="button"
+                data-testid="toggle-mini-player-widget-btn"
+                aria-label={t("player.toggle_mini_widget", {
+                  defaultValue: "Mini Player Widget",
+                })}
+                title={`${t("player.toggle_mini_widget", {
+                  defaultValue: "Mini Player Widget",
+                })}${overlayShortcut ? ` (${overlayShortcut})` : ""}`}
+                className={`${iconButtonClass} ${
+                  inAppWidgetOpen ? "text-text-primary bg-bg-toolbox-hover" : ""
+                }`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  setSpeedOpen(false);
+                  setVolumeOpen(false);
+                  toggleMiniPlayerWidget();
+                }}
+              >
+                <Widget5 size={18} weight={inAppWidgetOpen ? "Bold" : "Outline"} />
               </button>
               <button
                 type="button"

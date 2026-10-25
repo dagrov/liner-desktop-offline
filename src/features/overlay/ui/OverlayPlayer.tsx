@@ -11,7 +11,6 @@ import { HeartFill, HeartLine } from "@mingcute/react";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { ScrollableText } from "@/shared/ui/ScrollableText";
 import { useDisableButtonFocus } from "@/features/navigation/hooks/useDisableButtonFocus";
-import { getAuthSession } from "@/shared/api/auth-session";
 import type { OverlayAction, OverlayStatePayload } from "../contracts";
 import {
   useCustomizationStore,
@@ -47,11 +46,6 @@ export function OverlayPlayer() {
   const lastTrackIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!getAuthSession()) {
-      window.linerElectron?.closeOverlay?.();
-      return;
-    }
-
     window.linerElectron?.getOverlayInitialState?.().then((initial) => {
       if (initial) {
         anchorPosRef.current = initial.positionMs;
@@ -338,12 +332,14 @@ export function OverlayPlayer() {
               )}
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col justify-center overflow-hidden">
+            <div
+              data-music-title="true"
+              className="flex min-w-0 flex-1 flex-col justify-center overflow-hidden"
+            >
               <ScrollableText
                 text={state.track?.title || "No track playing"}
                 isParentHovered={isInfoHovered}
                 className="text-[13px] font-normal leading-[16px] text-white tracking-tight"
-                style={{ fontFamily: "var(--font-inter), sans-serif" }}
               />
               <ScrollableText
                 text={state.track?.artist || ""}

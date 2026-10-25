@@ -7,8 +7,6 @@ import {
   useUnlikeTrack,
 } from "@/features/library/hooks";
 import { useCoverSrc } from "@/features/covers";
-import { getAuthSession } from "@/shared/api";
-import { useAuthStore } from "@/features/auth/store/authStore";
 import { showToast } from "@/shared/ui/Toast";
 import type {
   OverlayAction,
@@ -17,8 +15,7 @@ import type {
 import { useOverlaySettingsStore } from "../store/overlaySettingsStore";
 
 export function useOverlaySync() {
-  const authStatus = useAuthStore((s) => s.status);
-  const isAuthenticated = authStatus === "authenticated" && Boolean(getAuthSession());
+  const isAuthenticated = true;
   const player = usePlayerState();
   const currentTrack = player.currentTrack;
   const effectiveCover = useCoverSrc(currentTrack?.coverUrl);
@@ -27,13 +24,10 @@ export function useOverlaySync() {
   const unlikeMutation = useUnlikeTrack();
   const isTogglingLikeRef = useRef(false);
 
-  // Sync auth status to Electron overlay manager
+  // Sync auth status to Electron overlay manager (offline-first: always authorized)
   useEffect(() => {
-    window.linerElectron?.setOverlayAuthenticated?.(isAuthenticated);
-    if (!isAuthenticated) {
-      window.linerElectron?.closeOverlay?.();
-    }
-  }, [isAuthenticated]);
+    window.linerElectron?.setOverlayAuthenticated?.(true);
+  }, []);
 
   // Sync settings on mount
   useEffect(() => {
@@ -45,23 +39,6 @@ export function useOverlaySync() {
       autoShowOnMinimize: s.autoShowOnMinimize,
       alwaysOnTop: s.alwaysOnTop,
     });
-  }, []);
-
-  // Hide overlay when user logs out or session is cleared
-  useEffect(() => {
-    const handleAuthChange = () => {
-      const session = getAuthSession();
-      const authed = Boolean(session);
-      window.linerElectron?.setOverlayAuthenticated?.(authed);
-      if (!authed) {
-        window.linerElectron?.closeOverlay?.();
-        window.linerElectron?.sendOverlayAction?.({ type: "closeOverlay" });
-      }
-    };
-    window.addEventListener("auth:changed", handleAuthChange);
-    return () => {
-      window.removeEventListener("auth:changed", handleAuthChange);
-    };
   }, []);
 
   // Listen for actions from overlay

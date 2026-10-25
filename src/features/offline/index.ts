@@ -10,12 +10,20 @@ export {
   importLocalAudioBlobs,
   syncElectronMusicDirectory,
   scanPcForAudio,
+  getTrackCustomLyricsText,
+  saveTrackCustomLyrics,
   resolveOfflineTrackBlob,
   notifyOfflineLibraryChanged,
   offlineApi,
   type OfflineTrackRecord,
   type OfflinePlaylistRecord,
+  type TrackLyricsOverride,
 } from "./store/offlineLibraryStore";
+export {
+  formatLrcTimestamp,
+  normalizeLyricsInput,
+  buildCustomLyricsCandidate,
+} from "./lib/customLyricsUtils";
 export { SAMPLE_TRACKS, SAMPLE_COVERS, svgToDataUrl } from "./lib/sampleLibrary";
 export { synthesizeSampleTrackWav } from "./lib/synthAudioGenerator";
 export {

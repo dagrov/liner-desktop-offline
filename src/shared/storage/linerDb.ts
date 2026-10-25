@@ -531,6 +531,17 @@ class LinerDb {
     });
   }
 
+  async deleteLyrics(trackId: string): Promise<void> {
+    this.memLyrics.delete(trackId);
+    await this.runTransaction("lyrics", "readwrite", (store) => {
+      return new Promise<void>((resolve, reject) => {
+        const req = store.delete(trackId);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    });
+  }
+
   async updateLyricsChecked(trackId: string): Promise<void> {
     const existing = await this.getLyrics(trackId);
     if (!existing) return;

@@ -37,6 +37,15 @@ import {
   extractAudioMetadata,
   extractAudioMetadataFromHeaderBytes,
 } from "../lib/audioMetadataParser";
+import {
+  buildCustomLyricsCandidate,
+  normalizeLyricsInput,
+  type StoredLyricsFormat,
+} from "../lib/customLyricsUtils";
+import { parseRawLyrics } from "@/features/lyrics/engine/lyricsParser";
+import { lyricsCache } from "@/features/lyrics/store/lyricsCache";
+import { useLyricsStore } from "@/features/lyrics/store/lyricsStore";
+import { usePlayerStore } from "@/features/player/store/playerStore";
 
 export interface OfflineTrackRecord {
   id: string;
@@ -88,9 +97,16 @@ export interface SavedCollectionRecord {
   snapshot?: Record<string, unknown>;
 }
 
+export interface TrackLyricsOverride {
+  content: string;
+  format: StoredLyricsFormat;
+  updatedAt: string;
+}
+
 interface OfflineLibraryState {
   customTracks: OfflineTrackRecord[];
   trackCoverOverrides: Record<string, string>;
+  trackLyricsOverrides: Record<string, TrackLyricsOverride>;
   albumCoverOverrides: Record<string, string>;
   trackPlayCounts: Record<string, number>;
   likedTracks: { trackId: string; likedAt: string }[];
@@ -101,12 +117,15 @@ interface OfflineLibraryState {
   includeSampleTracks: boolean;
   autoScanPcOnLaunch: boolean;
   isScanningPc: boolean;
+  lyricsEditorTrackId: string | null;
   seededDefaults: boolean;
 
   ensureSeeded: () => void;
   setIncludeSampleTracks: (enabled: boolean) => void;
   setAutoScanPcOnLaunch: (enabled: boolean) => void;
   setSyncedMusicFolder: (folder: string | null) => void;
+  openLyricsEditor: (trackId: string) => void;
+  closeLyricsEditor: () => void;
   addOrUpdateCustomTracks: (tracks: OfflineTrackRecord[]) => void;
   removeCustomTrack: (trackId: string) => void;
   setTrackCoverUrl: (trackId: string, coverUrl: string | null) => void;
@@ -209,6 +228,7 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
     (set, get) => ({
       customTracks: [],
       trackCoverOverrides: {},
+      trackLyricsOverrides: {},
       albumCoverOverrides: {},
       trackPlayCounts: {},
       likedTracks: [],
@@ -219,6 +239,7 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
       includeSampleTracks: false,
       autoScanPcOnLaunch: true,
       isScanningPc: false,
+      lyricsEditorTrackId: null,
       seededDefaults: false,
 
       ensureSeeded: () => {
@@ -261,6 +282,9 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
       },
 
       setSyncedMusicFolder: (folder) => set({ syncedMusicFolder: folder }),
+
+      openLyricsEditor: (trackId) => set({ lyricsEditorTrackId: trackId }),
+      closeLyricsEditor: () => set({ lyricsEditorTrackId: null }),
 
       addOrUpdateCustomTracks: (incoming) => {
         if (incoming.length === 0) return;
@@ -325,6 +349,7 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
       partialize: (state) => ({
         customTracks: state.customTracks,
         trackCoverOverrides: state.trackCoverOverrides,
+        trackLyricsOverrides: state.trackLyricsOverrides,
         albumCoverOverrides: state.albumCoverOverrides,
         trackPlayCounts: state.trackPlayCounts,
         likedTracks: state.likedTracks,
@@ -488,6 +513,19 @@ async function ingestScannedElectronFiles(
     const albumSlug = slugify(`${meta.artists}-${albumTitle}`);
     const idSeed = `local:${slugify(payload.path)}`;
 
+    let sidecarLrc: string | undefined;
+    if (bridge.readSidecarLyrics) {
+      const sidecar = await bridge
+        .readSidecarLyrics(payload.path)
+        .catch(() => null);
+      if (sidecar?.content) {
+        sidecarLrc = normalizeLyricsInput(
+          sidecar.content,
+          sidecar.fileName,
+        ).content;
+      }
+    }
+
     const record: OfflineTrackRecord = {
       id: idSeed,
       title: meta.title,
@@ -506,6 +544,7 @@ async function ingestScannedElectronFiles(
         "modern",
         ...(meta.genre ? [meta.genre.toLowerCase()] : []),
       ],
+      lrcLyrics: sidecarLrc,
       playCount: 1,
       source: "local",
       localFilePath: payload.path,
@@ -585,6 +624,175 @@ export async function scanPcForAudio(): Promise<{
   })();
 
   return inFlightPcScan;
+}
+
+export function getTrackCustomLyricsText(trackId: string): string {
+  const override =
+    useOfflineLibraryStore.getState().trackLyricsOverrides[trackId];
+  if (override?.content) return override.content;
+  const offline = getOfflineTrackById(trackId);
+  return offline?.lrcLyrics ?? "";
+}
+
+export function saveTrackCustomLyrics(
+  trackId: string,
+  rawContent: string | null,
+  fileName?: string,
+): { saved: boolean; lineCount: number; syncLevel: string } {
+  const normalized = normalizeLyricsInput(rawContent ?? "", fileName);
+  const offlineTrack = getOfflineTrackById(trackId);
+  const activePlayerTrack = usePlayerStore.getState().currentTrack;
+  const title =
+    offlineTrack?.title ||
+    (activePlayerTrack?.id === trackId ? activePlayerTrack.title : "Track");
+  const artists =
+    offlineTrack?.artists ||
+    (activePlayerTrack?.id === trackId ? activePlayerTrack.artists : "Artist");
+  const durationMs =
+    offlineTrack?.durationMs ||
+    (activePlayerTrack?.id === trackId
+      ? activePlayerTrack.durationMs
+      : 180_000) ||
+    180_000;
+
+  if (!normalized.content) {
+    useOfflineLibraryStore.setState((state) => {
+      const next = { ...state.trackLyricsOverrides };
+      delete next[trackId];
+      return { trackLyricsOverrides: next };
+    });
+    lyricsCache.delete(trackId);
+    void linerDb.deleteLyrics(trackId).catch(() => {});
+
+    if (
+      activePlayerTrack?.id === trackId ||
+      useLyricsStore.getState().currentLyricsTrackId === trackId
+    ) {
+      if (offlineTrack?.lrcLyrics) {
+        const fallbackNorm = normalizeLyricsInput(offlineTrack.lrcLyrics);
+        const fallbackCandidate = buildCustomLyricsCandidate({
+          title,
+          artists,
+          durationMs,
+          normalized: fallbackNorm,
+        });
+        const parsed = parseRawLyrics(
+          fallbackNorm.content,
+          fallbackNorm.format,
+          durationMs,
+        );
+        useLyricsStore.getState().setLyricsState({
+          lyricsLoading: false,
+          lyricsError: null,
+          rawLyrics: fallbackNorm.content,
+          rawFormat: fallbackNorm.format,
+          braccatoLyrics: parsed.braccatoLyrics,
+          syncedLines: parsed.syncedLines,
+          plainLyrics: parsed.plainLyrics,
+          lyricsQuality: fallbackCandidate.quality.total,
+          currentLyricsTrackId: trackId,
+          activeProvider: fallbackCandidate.provider,
+          availableProviders: [
+            {
+              provider: fallbackCandidate.provider,
+              syncLevel: fallbackCandidate.syncLevel,
+              quality: fallbackCandidate.quality.total,
+              candidate: fallbackCandidate,
+            },
+          ],
+        });
+      } else {
+        useLyricsStore.getState().setLyricsState({
+          lyricsLoading: false,
+          lyricsError: null,
+          rawLyrics: null,
+          rawFormat: null,
+          braccatoLyrics: [],
+          syncedLines: [],
+          plainLyrics: null,
+          lyricsQuality: 0,
+          currentLyricsTrackId: trackId,
+          activeProvider: null,
+          availableProviders: [],
+        });
+      }
+    }
+
+    notifyOfflineLibraryChanged();
+    return { saved: false, lineCount: 0, syncLevel: "plain" };
+  }
+
+  useOfflineLibraryStore.setState((state) => ({
+    trackLyricsOverrides: {
+      ...state.trackLyricsOverrides,
+      [trackId]: {
+        content: normalized.content,
+        format: normalized.format,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  }));
+
+  const candidate = buildCustomLyricsCandidate({
+    title,
+    artists,
+    durationMs,
+    normalized,
+  });
+  const providerOption = {
+    provider: candidate.provider,
+    syncLevel: candidate.syncLevel,
+    quality: candidate.quality.total,
+    candidate,
+  };
+
+  lyricsCache.delete(trackId);
+  lyricsCache.set(trackId, candidate, [providerOption]);
+  void linerDb
+    .putLyrics({
+      trackId,
+      syncLevel: candidate.syncLevel,
+      quality: candidate.quality.total,
+      activeProvider: candidate.provider,
+      availableProviders: [providerOption],
+      rawLyrics: normalized.content,
+      rawFormat: normalized.format,
+      candidate,
+      updatedAt: Date.now(),
+      lastCheckedAt: Date.now(),
+    })
+    .catch(() => {});
+
+  if (
+    activePlayerTrack?.id === trackId ||
+    useLyricsStore.getState().currentLyricsTrackId === trackId
+  ) {
+    const parsed = parseRawLyrics(
+      normalized.content,
+      normalized.format,
+      durationMs,
+    );
+    useLyricsStore.getState().setLyricsState({
+      lyricsLoading: false,
+      lyricsError: null,
+      rawLyrics: normalized.content,
+      rawFormat: normalized.format,
+      braccatoLyrics: parsed.braccatoLyrics,
+      syncedLines: parsed.syncedLines,
+      plainLyrics: parsed.plainLyrics,
+      lyricsQuality: candidate.quality.total,
+      currentLyricsTrackId: trackId,
+      activeProvider: candidate.provider,
+      availableProviders: [providerOption],
+    });
+  }
+
+  notifyOfflineLibraryChanged();
+  return {
+    saved: true,
+    lineCount: normalized.lineCount,
+    syncLevel: normalized.syncLevel,
+  };
 }
 
 export async function resolveOfflineTrackBlob(
@@ -1228,59 +1436,52 @@ export const offlineApi = {
 
   async *streamLyrics(id: string): AsyncGenerator<LyricsStreamEvent> {
     const track = getOfflineTrackById(id);
-    if (!track) {
+    const customOverride =
+      useOfflineLibraryStore.getState().trackLyricsOverrides[id];
+
+    if (!track && !customOverride) {
       yield { type: "done", cached: false, status: "not_found" };
       return;
     }
 
+    const title = track?.title ?? "Local Track";
+    const artists = track?.artists ?? "Local Artist";
+    const artistId = track?.artistId ?? "artist:local";
+    const durationMs = track?.durationMs ?? 180_000;
+
     yield {
       type: "metadata",
       track: {
-        id: track.id,
-        title: track.title,
-        artists: [{ id: track.artistId, name: track.artists }],
-        durationMs: track.durationMs,
+        id,
+        title,
+        artists: [{ id: artistId, name: artists }],
+        durationMs,
       },
     };
 
-    if (track.lrcLyrics) {
-      const candidate = {
-        provider: "offline-liner",
-        contentKind: "line_synced" as const,
-        syncLevel: "line_level" as const,
-        topPriority: true,
-        matchedTrack: {
-          title: track.title,
-          artists: [track.artists],
-          durationMs: track.durationMs,
-        },
-        lyrics: {
-          format: "lrc" as const,
-          content: track.lrcLyrics,
-        },
-        quality: {
-          total: 95,
-          match: 100,
-          content: 92,
-          sync: 94,
-          source: 95,
-          reasons: ["bundled-offline-lrc"],
-        },
-      };
+    const rawSource = customOverride?.content || track?.lrcLyrics;
+    if (rawSource) {
+      const normalized = normalizeLyricsInput(rawSource);
+      const candidate = buildCustomLyricsCandidate({
+        title,
+        artists,
+        durationMs,
+        normalized,
+      });
       yield {
         type: "provider",
-        provider: "offline-liner",
+        provider: candidate.provider,
         status: "found",
-        syncLevel: "line_level",
+        syncLevel: candidate.syncLevel,
         candidate,
       };
       yield {
         type: "done",
         cached: true,
         best: {
-          provider: "offline-liner",
-          quality: 95,
-          syncLevel: "line_level",
+          provider: candidate.provider,
+          quality: candidate.quality.total,
+          syncLevel: candidate.syncLevel,
         },
       };
     } else {

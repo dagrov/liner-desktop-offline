@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Delete2Line,
+  Edit2Line,
   FolderOpenLine,
   Music2Fill,
   Pic2Line,
@@ -27,6 +28,10 @@ import { SettingBlock, SettingRow, SettingSection } from "../controls";
 
 export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
   const customTracks = useOfflineLibraryStore((s) => s.customTracks);
+  const trackLyricsOverrides = useOfflineLibraryStore(
+    (s) => s.trackLyricsOverrides,
+  );
+  const openLyricsEditor = useOfflineLibraryStore((s) => s.openLyricsEditor);
   const includeSampleTracks = useOfflineLibraryStore(
     (s) => s.includeSampleTracks,
   );
@@ -268,6 +273,18 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
                     className="h-8 w-8 rounded-lg border-0 bg-transparent hover:bg-white/[0.1] text-text-secondary hover:text-text-primary flex items-center justify-center cursor-pointer"
                   >
                     <PlayFill size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    title="Add or edit lyrics"
+                    onClick={() => openLyricsEditor(track.id)}
+                    className={`h-8 w-8 rounded-lg border-0 bg-transparent hover:bg-white/[0.1] flex items-center justify-center cursor-pointer ${
+                      trackLyricsOverrides[track.id] || track.lrcLyrics
+                        ? "text-text-primary"
+                        : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <Edit2Line size={15} />
                   </button>
                   <button
                     type="button"

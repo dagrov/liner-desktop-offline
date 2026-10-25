@@ -40,3 +40,4 @@ export {
   SpeedPitchPicker,
   type SpeedPitchPickerProps,
 } from "./ui/SpeedPitchPicker";
+export { FloatingMiniPlayerWidget } from "./ui/FloatingMiniPlayerWidget";

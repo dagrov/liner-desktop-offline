@@ -357,6 +357,15 @@ class LyricsCache {
     this.saveIndex(index);
   }
 
+  delete(trackId: string) {
+    this.memCache.delete(trackId);
+    try {
+      localStorage.removeItem(STORAGE_PREFIX + trackId);
+    } catch {}
+    const index = this.getIndex().filter((id) => id !== trackId);
+    this.saveIndex(index);
+  }
+
   clear() {
     const index = this.getIndex();
     for (const id of index) {

@@ -455,7 +455,9 @@
     "preset_nightcore": "1.35x Nightcore",
     "reverb": "አስተጋባ (Reverb)",
     "reverb_hint": "ሰፊ የድምፅ ምህዳር እና ጥልቀት",
-    "reverb_amount": "አስተጋባ"
+    "reverb_amount": "አስተጋባ",
+    "toggle_mini_widget": "ሚኒ ማጫወቻ ዊጀት",
+    "no_track_playing": "ምንም ሙዚቃ እየተጫወተ አይደለም"
   },
   "playlist": {
     "playlist": "የሙዚቃ ዝርዝር",
@@ -605,6 +607,12 @@
       "always_on_top": {
         "title": "ሁልጊዜ ከላይ",
         "description": "ተንሳፋፊውን ማጫወቻ ሁልጊዜ ከሌሎች መስኮቶች በላይ አቆይ።"
+      },
+      "open_now": {
+        "title": "ሚኒ ማጫወቻ ዊጀት አሳይ",
+        "description": "ተንሳፋፊውን ሚኒ ማጫወቻ አሁኑኑ ይክፈቱ ወይም ይደብቁ።",
+        "show_btn": "ዊጀት አሳይ",
+        "hide_btn": "ዊጀት ደብቅ"
       }
     },
     "youtube": {
@@ -1110,5 +1118,29 @@
     "copy_code": "ኮድ ቅዳ",
     "connected": "YouTube ተገናኝቷል",
     "qr_label": "የመግቢያ QR ኮድ"
+  },
+  "lyrics_editor": {
+    "add_or_edit": "ግጥም ጨምር / ለጥፍ",
+    "paste_or_edit": "ግጥም ለጥፍ / ጨምር",
+    "edit_button": "ግጥም አስተካክል",
+    "import_file": "የግጥም ፋይል አስገባ",
+    "paste_clipboard": "ግጥም ለጥፍ",
+    "stamp_time": "ሰዓት አስገባ {{time}}",
+    "stamp_time_hint": "የአሁኑን የማጫወቻ ሰዓት [mm:ss.xx] መስመሩ ላይ ያስገቡ",
+    "clear_lyrics": "ግጥም አጥፋ",
+    "save_lyrics": "ግጥም አስቀምጥ",
+    "subtitle": "የ .lrc / .txt / .srt ፋይል ያስገቡ ወይም ግጥሙን ከታች ይለጥፉ",
+    "placeholder": "መደበኛ ግጥም ወይም ከሰዓት ጋር የተቀናጀ LRC እዚህ ይለጥፉ...\n\n[00:12.40] የሙከራ የተቀናጀ የግጥም መስመር\n[00:16.80] [mm:ss.xx] ያላቸው መስመሮች ሙዚቃው ሲጫወት በራሳቸው ይደምቃሉ\n\nወይም ያለ ሰዓት መደበኛ ግጥም ለጥፈው ያንብቡ።",
+    "badge_empty": "ባዶ",
+    "badge_word_synced": "ቃል-በ-ቃል የተቀናጀ LRC",
+    "badge_line_synced": "ከሰዓት ጋር የተቀናጀ ግጥም",
+    "badge_plain": "መደበኛ የጽሑፍ ግጥም",
+    "lines_count": "{{count}} መስመሮች",
+    "formats_hint": ".lrc · .txt · .srt · .vtt · .ttml",
+    "imported_file_toast": "ግጥም ከ {{name}} ተጭኗል",
+    "saved_toast": "ለ {{title}} ግጥም ተቀምጧል ({{count}} መስመሮች)",
+    "cleared_toast": "የ {{title}} ግጥም ተወግዷል",
+    "clipboard_empty": "ቅንጥብ ሰሌዳው ባዶ ነው",
+    "paste_shortcut_hint": "ለመለጠፍ በጽሑፍ ሳጥኑ ውስጥ Ctrl+V / Cmd+V ይጫኑ"
   }
 }

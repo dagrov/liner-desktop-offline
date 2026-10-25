@@ -59,6 +59,10 @@ export function OverlayTab({ searchQuery }: { searchQuery?: string }) {
 
   const alwaysOnTop = useOverlaySettingsStore((s) => s.alwaysOnTop);
   const setAlwaysOnTop = useOverlaySettingsStore((s) => s.setAlwaysOnTop);
+  const toggleMiniPlayerWidget = useOverlaySettingsStore(
+    (s) => s.toggleMiniPlayerWidget,
+  );
+  const inAppWidgetOpen = useOverlaySettingsStore((s) => s.inAppWidgetOpen);
 
   const [isRecording, setIsRecording] = useState(false);
   const [heldModifiers, setHeldModifiers] = useState<string[]>([]);
@@ -184,6 +188,32 @@ export function OverlayTab({ searchQuery }: { searchQuery?: string }) {
             checked={enabled}
             onChange={setEnabled}
           />
+        }
+      />
+
+      <SettingRow
+        title={t("settings.overlay.open_now.title", {
+          defaultValue: "Show Mini Player Widget",
+        })}
+        description={t("settings.overlay.open_now.description", {
+          defaultValue:
+            "Open or hide the floating compact mini player widget right now.",
+        })}
+        searchQuery={searchQuery}
+        control={
+          <button
+            type="button"
+            onClick={toggleMiniPlayerWidget}
+            className="h-[32px] px-3.5 rounded-[9px] border border-border-alpha-14 bg-white/[0.08] hover:bg-white/[0.14] text-[12.5px] font-medium text-text-primary cursor-pointer transition-colors"
+          >
+            {inAppWidgetOpen
+              ? t("settings.overlay.open_now.hide_btn", {
+                  defaultValue: "Hide Widget",
+                })
+              : t("settings.overlay.open_now.show_btn", {
+                  defaultValue: "Show Widget",
+                })}
+          </button>
         }
       />
 
