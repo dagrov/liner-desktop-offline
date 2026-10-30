@@ -15,9 +15,6 @@ export interface RightDrawerHeaderProps {
   onRepeatCycle: () => void;
   onClear: () => void;
   onClose?: () => void;
-  assistantEnabled?: boolean;
-  activeMode?: "queue" | "assistant";
-  onModeChange?: (mode: "queue" | "assistant") => void;
 }
 
 interface QueueActionProps {
@@ -65,9 +62,6 @@ export function RightDrawerHeader({
   onRepeatCycle,
   onClear,
   onClose,
-  assistantEnabled = false,
-  activeMode = "queue",
-  onModeChange,
 }: RightDrawerHeaderProps) {
   const { t } = useTranslation();
   const RepeatIcon = repeat === "one" ? RepeatOne : Repeat;
@@ -89,69 +83,38 @@ export function RightDrawerHeader({
         </button>
       )}
 
-      {assistantEnabled && onModeChange ? (
-        <div className="flex min-w-0 flex-1 items-center gap-1 rounded-[10px] bg-white/[0.08] p-1">
-          <button
-            type="button"
-            onClick={() => onModeChange("queue")}
-            className={cn(
-              "flex-1 h-[30px] rounded-[7px] border-0 text-[12.5px] font-[600] cursor-pointer transition-colors truncate px-2",
-              activeMode === "queue"
-                ? "bg-white/[0.16] text-text-primary"
-                : "bg-transparent text-text-tertiary hover:text-text-primary",
-            )}
-          >
-            {t("player.queue")} ({trackCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => onModeChange("assistant")}
-            className={cn(
-              "flex-1 h-[30px] rounded-[7px] border-0 text-[12.5px] font-[600] cursor-pointer transition-colors truncate px-2",
-              activeMode === "assistant"
-                ? "bg-white/[0.16] text-text-primary"
-                : "bg-transparent text-text-tertiary hover:text-text-primary",
-            )}
-          >
-            Assistant
-          </button>
-        </div>
-      ) : (
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h2 className="m-0 truncate text-[16px] font-[600] leading-tight tracking-tight text-text-primary">
-            {t("player.queue")}
-          </h2>
-          <span className="truncate text-[12px] leading-tight text-text-tertiary">
-            {t("common.tracks", { count: trackCount })}
-          </span>
-        </div>
-      )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <h2 className="m-0 truncate text-[16px] font-[600] leading-tight tracking-tight text-text-primary">
+          {t("player.queue")}
+        </h2>
+        <span className="truncate text-[12px] leading-tight text-text-tertiary">
+          {t("common.tracks", { count: trackCount })}
+        </span>
+      </div>
 
-      {activeMode === "queue" && (
-        <div className="flex h-[40px] shrink-0 items-center gap-[2px] rounded-[10px] bg-white/[0.1] p-[4px]">
-          <QueueAction
-            label={shuffle ? t("player.shuffle_on") : t("player.shuffle_off")}
-            active={shuffle}
-            onClick={onShuffleToggle}
-          >
-            <Shuffle size={18} weight="Outline" />
-          </QueueAction>
-          <QueueAction
-            label={t(`player.repeat_${repeat}`)}
-            active={repeat !== "off"}
-            onClick={onRepeatCycle}
-          >
-            <RepeatIcon size={18} weight="Outline" />
-          </QueueAction>
-          <QueueAction
-            label={t("player.clear_queue")}
-            disabled={!canClear}
-            onClick={onClear}
-          >
-            <TrashBin2 size={18} weight="Outline" />
-          </QueueAction>
-        </div>
-      )}
+      <div className="flex h-[40px] shrink-0 items-center gap-[2px] rounded-[10px] bg-white/[0.1] p-[4px]">
+        <QueueAction
+          label={shuffle ? t("player.shuffle_on") : t("player.shuffle_off")}
+          active={shuffle}
+          onClick={onShuffleToggle}
+        >
+          <Shuffle size={18} weight="Outline" />
+        </QueueAction>
+        <QueueAction
+          label={t(`player.repeat_${repeat}`)}
+          active={repeat !== "off"}
+          onClick={onRepeatCycle}
+        >
+          <RepeatIcon size={18} weight="Outline" />
+        </QueueAction>
+        <QueueAction
+          label={t("player.clear_queue")}
+          disabled={!canClear}
+          onClick={onClear}
+        >
+          <TrashBin2 size={18} weight="Outline" />
+        </QueueAction>
+      </div>
     </div>
   );
 }

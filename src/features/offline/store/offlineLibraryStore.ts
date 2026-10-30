@@ -35,7 +35,7 @@ import {
 } from "../lib/synthAudioGenerator";
 import {
   extractAudioMetadata,
-  extractAudioMetadataFromHeaderBytes,
+  inferFromFilename,
 } from "../lib/audioMetadataParser";
 import {
   buildCustomLyricsCandidate,
@@ -71,6 +71,8 @@ export interface OfflineTrackRecord {
   source: "sample" | "local";
   synthPreset?: SynthPreset;
   localFilePath?: string;
+  folderPath?: string;
+  folderName?: string;
   mimeType?: string;
   addedAt: string;
 }
@@ -237,7 +239,7 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
       history: [],
       syncedMusicFolder: null,
       includeSampleTracks: false,
-      autoScanPcOnLaunch: true,
+      autoScanPcOnLaunch: false,
       isScanningPc: false,
       lyricsEditorTrackId: null,
       seededDefaults: false,
@@ -361,6 +363,47 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>()(
         autoScanPcOnLaunch: state.autoScanPcOnLaunch,
         seededDefaults: state.seededDefaults,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const isElectron =
+          typeof window !== "undefined" &&
+          Boolean(window.linerElectron?.localMedia);
+        let mutated = false;
+        const cleaned = state.customTracks.map((track) => {
+          let next = track;
+          // Populate folderPath / folderName from localFilePath if missing
+          if (next.localFilePath && (!next.folderPath || !next.folderName)) {
+            const parts = next.localFilePath.split(/[\\/]/);
+            parts.pop();
+            const fp = parts.join(next.localFilePath.includes("\\") ? "\\" : "/");
+            const fn = parts[parts.length - 1] || fp || "Local Folder";
+            next = { ...next, folderPath: fp, folderName: fn };
+            mutated = true;
+          }
+          // Strip huge legacy base64 covers out of localStorage to prevent quota drops & UI lag
+          if (
+            next.originalCoverUrl &&
+            next.originalCoverUrl.startsWith("data:image/") &&
+            !next.originalCoverUrl.startsWith("data:image/svg+xml") &&
+            next.originalCoverUrl.length > 8192
+          ) {
+            const diskCover =
+              isElectron && next.localFilePath
+                ? `liner-media://cover?path=${encodeURIComponent(next.localFilePath)}`
+                : SAMPLE_TRACKS[0]?.coverUrl || "";
+            next = {
+              ...next,
+              coverUrl: diskCover,
+              originalCoverUrl: diskCover,
+            };
+            mutated = true;
+          }
+          return next;
+        });
+        if (mutated) {
+          state.customTracks = cleaned;
+        }
+      },
     },
   ),
 );
@@ -387,7 +430,8 @@ export function getAllOfflineTracks(): OfflineTrackRecord[] {
     return {
       ...track,
       coverUrl: coverOverride || track.originalCoverUrl || track.coverUrl,
-      playCount: track.playCount + extraPlays,
+      // Local tracks ALWAYS start at 0 plays until the user genuinely plays them
+      playCount: track.source === "local" ? extraPlays : track.playCount + extraPlays,
     };
   });
 }
@@ -435,13 +479,19 @@ export function toClientTrackFromOffline(
 }
 
 export async function importLocalAudioBlobs(
-  entries: { file: Blob; name: string; localFilePath?: string }[],
+  entries: {
+    file: Blob;
+    name: string;
+    localFilePath?: string;
+    folderName?: string;
+    folderPath?: string;
+  }[],
 ): Promise<OfflineTrackRecord[]> {
   const imported: OfflineTrackRecord[] = [];
   for (const entry of entries) {
     const meta = await extractAudioMetadata(entry.file, entry.name);
     const artistSlug = slugify(meta.artists);
-    const albumTitle = meta.albumTitle || "Local Library";
+    const albumTitle = meta.albumTitle || entry.folderName || "Imported Music";
     const albumSlug = slugify(`${meta.artists}-${albumTitle}`);
     const idSeed = entry.localFilePath
       ? `local:${slugify(entry.localFilePath)}`
@@ -452,6 +502,30 @@ export async function importLocalAudioBlobs(
       await linerDb.putAudio(idSeed, entry.file, mimeType);
     }
 
+    // Avoid saving multi-megabyte base64 raster covers inside localStorage
+    const safeCoverUrl =
+      entry.localFilePath &&
+      typeof window !== "undefined" &&
+      window.linerElectron?.localMedia
+        ? `liner-media://cover?path=${encodeURIComponent(entry.localFilePath)}`
+        : meta.coverUrl.length > 48_000 &&
+            !meta.coverUrl.startsWith("data:image/svg+xml")
+          ? SAMPLE_TRACKS[0]?.coverUrl || meta.coverUrl
+          : meta.coverUrl;
+
+    const relPath = (entry.file as any)?.webkitRelativePath as
+      | string
+      | undefined;
+    const relFolder =
+      relPath && relPath.includes("/")
+        ? relPath.split("/").slice(0, -1).join("/")
+        : undefined;
+    const folderName =
+      entry.folderName ||
+      (relFolder ? relFolder.split("/").pop() : undefined) ||
+      "Imported Files";
+    const folderPath = entry.folderPath || relFolder || "Imported Files";
+
     const record: OfflineTrackRecord = {
       id: idSeed,
       title: meta.title,
@@ -459,16 +533,18 @@ export async function importLocalAudioBlobs(
       artistId: `artist:${artistSlug}`,
       albumTitle,
       albumId: `album:${albumSlug}`,
-      coverUrl: meta.coverUrl,
-      originalCoverUrl: meta.coverUrl,
+      coverUrl: safeCoverUrl,
+      originalCoverUrl: safeCoverUrl,
       durationMs: meta.durationMs,
       releaseDate: meta.year ? `${meta.year}-01-01` : undefined,
       genre: meta.genre || "Local Audio",
       moods: ["local", ...(meta.genre ? [meta.genre.toLowerCase()] : [])],
       vibeTags: ["clean", "modern", ...(meta.genre ? [meta.genre.toLowerCase()] : [])],
-      playCount: 1,
+      playCount: 0,
       source: "local",
       localFilePath: entry.localFilePath,
+      folderPath,
+      folderName,
       mimeType,
       addedAt: new Date().toISOString(),
     };
@@ -481,8 +557,96 @@ export async function importLocalAudioBlobs(
   return imported;
 }
 
-async function ingestScannedElectronFiles(
-  scanned: { path: string; name: string; size: number }[],
+const MIME_BY_AUDIO_EXT: Record<string, string> = {
+  ".mp3": "audio/mpeg",
+  ".flac": "audio/flac",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".opus": "audio/opus",
+  ".webm": "audio/webm",
+};
+
+function enrichScannedTracksInBackground(
+  records: OfflineTrackRecord[],
+): void {
+  const bridge =
+    typeof window !== "undefined" ? window.linerElectron?.localMedia : undefined;
+  if (!bridge?.readTagsBatch || records.length === 0) return;
+
+  void (async () => {
+    const BATCH_SIZE = 35;
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const slice = records.slice(i, i + BATCH_SIZE);
+      const paths = slice
+        .map((r) => r.localFilePath)
+        .filter((p): p is string => Boolean(p));
+      if (paths.length === 0) continue;
+
+      const tagsList = await bridge.readTagsBatch(paths).catch(() => []);
+      const updates: OfflineTrackRecord[] = [];
+      const tagByPath = new Map(tagsList.map((t) => [t.path, t]));
+
+      for (const rec of slice) {
+        if (!rec.localFilePath) continue;
+        const tag = tagByPath.get(rec.localFilePath);
+        let sidecarLrc = rec.lrcLyrics;
+        if (!sidecarLrc && bridge.readSidecarLyrics) {
+          const sidecar = await bridge
+            .readSidecarLyrics(rec.localFilePath)
+            .catch(() => null);
+          if (sidecar?.content) {
+            sidecarLrc = normalizeLyricsInput(
+              sidecar.content,
+              sidecar.fileName,
+            ).content;
+          }
+        }
+
+        if (
+          tag?.title ||
+          tag?.artists ||
+          tag?.albumTitle ||
+          tag?.genre ||
+          tag?.year ||
+          sidecarLrc
+        ) {
+          const artists = tag?.artists || rec.artists;
+          const albumTitle = tag?.albumTitle || rec.albumTitle;
+          updates.push({
+            ...rec,
+            title: tag?.title || rec.title,
+            artists,
+            artistId: `artist:${slugify(artists)}`,
+            albumTitle,
+            albumId: `album:${slugify(`${artists}-${albumTitle}`)}`,
+            genre: tag?.genre || rec.genre,
+            releaseDate: tag?.year ? `${tag.year}-01-01` : rec.releaseDate,
+            lrcLyrics: sidecarLrc,
+          });
+        }
+      }
+
+      if (updates.length > 0) {
+        useOfflineLibraryStore.getState().addOrUpdateCustomTracks(updates);
+        queryCache.clear();
+      }
+      // Gentle pause between batches so spinning 500GB HDDs never lag the system
+      await new Promise<void>((r) => setTimeout(r, 150));
+    }
+  })();
+}
+
+export async function ingestScannedElectronFiles(
+  scanned: {
+    path: string;
+    name: string;
+    size: number;
+    ext?: string;
+    folderPath?: string;
+    folderName?: string;
+  }[],
 ): Promise<OfflineTrackRecord[]> {
   const bridge =
     typeof window !== "undefined" ? window.linerElectron?.localMedia : undefined;
@@ -491,75 +655,71 @@ async function ingestScannedElectronFiles(
   const existingPaths = new Set(
     useOfflineLibraryStore
       .getState()
-      .customTracks.map((t) => t.localFilePath)
+      .customTracks.map((t) => (t.localFilePath ? t.localFilePath.toLowerCase() : ""))
       .filter(Boolean),
   );
 
   const imported: OfflineTrackRecord[] = [];
+  const nowIso = new Date().toISOString();
+
   for (const fileInfo of scanned) {
-    if (existingPaths.has(fileInfo.path)) continue;
-    const payload = bridge.readFileHead
-      ? await bridge.readFileHead(fileInfo.path, 524_288)
-      : await bridge.readFile(fileInfo.path);
-    if (!payload) continue;
+    const lowerPath = fileInfo.path.toLowerCase();
+    if (existingPaths.has(lowerPath)) continue;
 
-    const meta = extractAudioMetadataFromHeaderBytes(
-      payload.bytes,
-      payload.name,
-      fileInfo.size,
+    const inferred = inferFromFilename(fileInfo.name);
+    const parts = fileInfo.path.split(/[\\/]/);
+    parts.pop();
+    const folderPath =
+      fileInfo.folderPath ||
+      parts.join(fileInfo.path.includes("\\") ? "\\" : "/");
+    const folderName =
+      fileInfo.folderName || parts[parts.length - 1] || "Local Folder";
+
+    const artistSlug = slugify(inferred.artists);
+    const albumTitle = folderName || "Local Music";
+    const albumSlug = slugify(`${inferred.artists}-${albumTitle}`);
+    const idSeed = `local:${slugify(fileInfo.path)}`;
+    const ext =
+      fileInfo.ext ||
+      (fileInfo.name.includes(".")
+        ? `.${fileInfo.name.split(".").pop()!.toLowerCase()}`
+        : ".mp3");
+    const diskCoverUrl = `liner-media://cover?path=${encodeURIComponent(fileInfo.path)}`;
+    const estimatedDurationMs = Math.max(
+      15_000,
+      Math.min(1_200_000, Math.round((fileInfo.size / 24_000) * 1000)),
     );
-    const artistSlug = slugify(meta.artists);
-    const albumTitle = meta.albumTitle || "Local Library";
-    const albumSlug = slugify(`${meta.artists}-${albumTitle}`);
-    const idSeed = `local:${slugify(payload.path)}`;
-
-    let sidecarLrc: string | undefined;
-    if (bridge.readSidecarLyrics) {
-      const sidecar = await bridge
-        .readSidecarLyrics(payload.path)
-        .catch(() => null);
-      if (sidecar?.content) {
-        sidecarLrc = normalizeLyricsInput(
-          sidecar.content,
-          sidecar.fileName,
-        ).content;
-      }
-    }
 
     const record: OfflineTrackRecord = {
       id: idSeed,
-      title: meta.title,
-      artists: meta.artists,
+      title: inferred.title,
+      artists: inferred.artists,
       artistId: `artist:${artistSlug}`,
       albumTitle,
       albumId: `album:${albumSlug}`,
-      coverUrl: meta.coverUrl,
-      originalCoverUrl: meta.coverUrl,
-      durationMs: meta.durationMs,
-      releaseDate: meta.year ? `${meta.year}-01-01` : undefined,
-      genre: meta.genre || "Local Audio",
-      moods: ["local", ...(meta.genre ? [meta.genre.toLowerCase()] : [])],
-      vibeTags: [
-        "clean",
-        "modern",
-        ...(meta.genre ? [meta.genre.toLowerCase()] : []),
-      ],
-      lrcLyrics: sidecarLrc,
-      playCount: 1,
+      coverUrl: diskCoverUrl,
+      originalCoverUrl: diskCoverUrl,
+      durationMs: estimatedDurationMs,
+      genre: "Local Audio",
+      moods: ["local"],
+      vibeTags: ["clean", "modern"],
+      playCount: 0,
       source: "local",
-      localFilePath: payload.path,
-      mimeType: payload.mimeType || "audio/mpeg",
-      addedAt: new Date().toISOString(),
+      localFilePath: fileInfo.path,
+      folderPath,
+      folderName,
+      mimeType: MIME_BY_AUDIO_EXT[ext] || "audio/mpeg",
+      addedAt: nowIso,
     };
 
-    await linerDb.putTrack(toClientTrackFromOffline(record));
     imported.push(record);
-    existingPaths.add(payload.path);
+    existingPaths.add(lowerPath);
   }
 
   if (imported.length > 0) {
     useOfflineLibraryStore.getState().addOrUpdateCustomTracks(imported);
     queryCache.clear();
+    enrichScannedTracksInBackground(imported);
   }
   return imported;
 }
@@ -793,6 +953,33 @@ export function saveTrackCustomLyrics(
     lineCount: normalized.lineCount,
     syncLevel: normalized.syncLevel,
   };
+}
+
+export type OfflinePlaybackSource =
+  | { kind: "disk-url"; url: string; mimeType: string }
+  | { kind: "blob"; blob: Blob; mimeType: string };
+
+export async function resolveOfflineTrackPlaybackSource(
+  trackId: string,
+): Promise<OfflinePlaybackSource | null> {
+  const record = getOfflineTrackById(trackId);
+
+  // 1. Electron local file on disk -> stream directly from disk via liner-media:// (0 RAM copy!)
+  if (
+    record?.localFilePath &&
+    typeof window !== "undefined" &&
+    window.linerElectron?.localMedia
+  ) {
+    return {
+      kind: "disk-url",
+      url: `liner-media://audio?path=${encodeURIComponent(record.localFilePath)}`,
+      mimeType: record.mimeType || "audio/mpeg",
+    };
+  }
+
+  const blobRes = await resolveOfflineTrackBlob(trackId);
+  if (!blobRes) return null;
+  return { kind: "blob", blob: blobRes.blob, mimeType: blobRes.mimeType };
 }
 
 export async function resolveOfflineTrackBlob(
@@ -1521,9 +1708,10 @@ export const offlineApi = {
     window: PopularTimeWindow = "7d",
     limit = 50,
   ): Promise<PopularTracksResponse> {
-    const tracks = [...getAllOfflineTracks()].sort(
-      (a, b) => b.playCount - a.playCount,
-    );
+    // Only rank tracks the user has genuinely listened to (playCount > 0)
+    const tracks = getAllOfflineTracks()
+      .filter((t) => t.playCount > 0)
+      .sort((a, b) => b.playCount - a.playCount);
     const likedSet = new Set(
       useOfflineLibraryStore.getState().likedTracks.map((l) => l.trackId),
     );
@@ -1534,7 +1722,7 @@ export const offlineApi = {
         rank: idx + 1,
         track: toApiTrackFromOffline(t),
         playCount: t.playCount,
-        uniqueListeners: Math.max(1, Math.round(t.playCount / 4)),
+        uniqueListeners: 1,
         score: t.playCount,
         viewer: { liked: likedSet.has(t.id) },
       })),

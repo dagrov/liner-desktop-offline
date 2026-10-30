@@ -1,4 +1,4 @@
-import { useCallback, useEffect, createElement, useRef, useState } from "react";
+import { useCallback, useEffect, createElement, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shouldReleaseTopPin, startsPinnedToTop } from "./lyricsTopPin";
 import { usePlayerState } from "../hooks/usePlayerState";
@@ -19,11 +19,9 @@ import "@braccato/core/element";
 import "@braccato/core/styles/variables.css";
 import "@braccato/core/styles/lyrics.css";
 import "@braccato/core/styles/instrumental.css";
-import KawarpWrapper from "./KawarpWrapper";
 import { useTranslation } from "@/languages";
 
 const BRACCATO_TAG = "braccato-lyrics";
-const KAWARP_FADE_IN_MS = 600;
 
 interface BraccatoLyricsViewProps {
   lyrics: any[];
@@ -331,7 +329,7 @@ export interface FullscreenPlayerProps {
 }
 
 export function FullscreenPlayer({
-  effectsReady = true,
+  effectsReady: _effectsReady = true,
   onClose,
 }: FullscreenPlayerProps) {
   const { t } = useTranslation();
@@ -355,15 +353,6 @@ export function FullscreenPlayer({
     currentLyricsTrackId,
   } = useLyricsStore();
   const openLyricsEditor = useOfflineLibraryStore((s) => s.openLyricsEditor);
-
-  const onError = useCallback((err: Error) => {
-    console.error("kawarp load error:", err);
-  }, []);
-
-  const [kawarpShown, setKawarpShown] = useState(false);
-  const onKawarpLoad = useCallback(() => {
-    setTimeout(() => setKawarpShown(true), KAWARP_FADE_IN_MS);
-  }, []);
 
   const nextCoverUrl = player.queue[player.currentIndex + 1]?.coverUrl;
   useEffect(() => {
@@ -419,15 +408,20 @@ export function FullscreenPlayer({
           className="absolute inset-0"
           style={{ backgroundColor: "var(--color-bg-primary)" }}
         />
-        {kawarpSrc && !kawarpShown && (
+        {kawarpSrc && (
           <div
-            className="absolute inset-0 bg-cover bg-center filter blur-3xl scale-110 opacity-70 pointer-events-none"
+            className="absolute inset-0 bg-cover bg-center blur-2xl scale-115 opacity-75 pointer-events-none transition-[background-image,opacity] duration-500"
             style={{ backgroundImage: `url(${kawarpSrc})` }}
           />
         )}
-        {effectsReady ? (
-          <KawarpWrapper src={kawarpSrc} onLoad={onKawarpLoad} onError={onError} />
-        ) : null}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at 28% 50%, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.62) 100%)",
+          }}
+        />
       </div>
 
       <div className="absolute inset-0 z-[1] bg-black/40" />
@@ -492,6 +486,7 @@ export function FullscreenPlayer({
                           line.trim() ? (
                             <p
                               key={idx}
+                              data-lyrics-verse="true"
                               className="m-0 text-[22px] sm:text-[26px] font-[600] leading-[1.45] text-white/90 tracking-tight"
                             >
                               {line}

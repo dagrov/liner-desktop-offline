@@ -7,6 +7,7 @@ export {
 } from "./lib/starterAssets";
 export {
   useStudioStore,
+  MATCH_TITLE_LYRICS_FONT_ID,
   getAllStudioCovers,
   getAllStudioFonts,
   importCoverBlobs,

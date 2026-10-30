@@ -17,6 +17,7 @@ interface PlaybackStreamFormat {
 export interface UrlPlaybackStream extends PlaybackStreamFormat {
   url: string;
   expiresAtMs: number | null;
+  isLocalDisk?: boolean;
   blob?: undefined;
   completed?: Promise<Blob>;
   needsFullSource?: () => boolean;

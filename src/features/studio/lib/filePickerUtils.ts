@@ -1,6 +1,7 @@
 import {
   getAllOfflineTracks,
   importLocalAudioBlobs,
+  ingestScannedElectronFiles,
   saveTrackCustomLyrics,
   scanPcForAudio,
   syncElectronMusicDirectory,
@@ -54,19 +55,7 @@ export async function pickAndImportMusicFiles(): Promise<number> {
   if (typeof window !== "undefined" && window.linerElectron?.localMedia) {
     const picked = await window.linerElectron.localMedia.pickFiles("music");
     if (picked.length === 0) return 0;
-    const batch: { file: Blob; name: string; localFilePath: string }[] = [];
-    for (const item of picked) {
-      const payload = await window.linerElectron.localMedia.readFile(item.path);
-      if (!payload) continue;
-      batch.push({
-        file: new Blob([new Uint8Array(payload.bytes)], {
-          type: payload.mimeType,
-        }),
-        name: payload.name,
-        localFilePath: payload.path,
-      });
-    }
-    const created = await importLocalAudioBlobs(batch);
+    const created = await ingestScannedElectronFiles(picked);
     return created.length;
   }
 
@@ -358,10 +347,31 @@ export async function handleDroppedFilesImport(
   let lyrics = 0;
 
   if (audioFiles.length > 0) {
-    const res = await importLocalAudioBlobs(
-      audioFiles.map((file) => ({ file, name: file.name })),
+    const withDiskPath = audioFiles.filter(
+      (f) =>
+        typeof window !== "undefined" &&
+        window.linerElectron?.localMedia &&
+        typeof (f as any).path === "string" &&
+        (f as any).path.length > 0,
     );
-    audio = res.length;
+    const browserOnly = audioFiles.filter((f) => !withDiskPath.includes(f));
+
+    if (withDiskPath.length > 0) {
+      const diskRes = await ingestScannedElectronFiles(
+        withDiskPath.map((f) => ({
+          path: (f as any).path as string,
+          name: f.name,
+          size: f.size,
+        })),
+      );
+      audio += diskRes.length;
+    }
+    if (browserOnly.length > 0) {
+      const blobRes = await importLocalAudioBlobs(
+        browserOnly.map((file) => ({ file, name: file.name })),
+      );
+      audio += blobRes.length;
+    }
   }
   if (fontFiles.length > 0) {
     const res = await importFontBlobs(

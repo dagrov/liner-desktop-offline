@@ -32,12 +32,6 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
     (s) => s.trackLyricsOverrides,
   );
   const openLyricsEditor = useOfflineLibraryStore((s) => s.openLyricsEditor);
-  const includeSampleTracks = useOfflineLibraryStore(
-    (s) => s.includeSampleTracks,
-  );
-  const setIncludeSampleTracks = useOfflineLibraryStore(
-    (s) => s.setIncludeSampleTracks,
-  );
   const autoScanPcOnLaunch = useOfflineLibraryStore(
     (s) => s.autoScanPcOnLaunch,
   );
@@ -126,8 +120,8 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
     <div className="flex flex-col gap-[20px] pb-[12px]">
       <SettingSection label="Offline Music Sources">
         <SettingBlock
-          title="Scan PC & Import Local Audio"
-          description="Automatically scan your PC's Music, Downloads, and Desktop folders, or import MP3, FLAC, WAV, OGG, M4A, AAC, and Opus files directly."
+          title="Scan Entire PC & Import Local Audio"
+          description="Scans all drives, partitions, and user folders on your PC (skipping Windows/system folders), or import MP3, FLAC, WAV, OGG, M4A, AAC, and Opus files directly."
           searchQuery={searchQuery}
         >
           <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -193,26 +187,13 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
 
         <SettingRow
           title="Auto-Scan PC on Launch"
-          description="Automatically scan your PC's Music, Downloads, and Desktop folders for audio files whenever Liner opens."
+          description="Off by default to keep startup fast and gentle on hard drives. Turn on to scan all drives & folders automatically when Liner opens."
           explained
           searchQuery={searchQuery}
           control={
             <ToggleSwitch
               checked={autoScanPcOnLaunch}
               onChange={setAutoScanPcOnLaunch}
-            />
-          }
-        />
-
-        <SettingRow
-          title="Include Demo Sample Tracks"
-          description="Optional: add 6 synthesized demo tracks with synchronized lyrics for testing when you don't have local audio yet."
-          explained
-          searchQuery={searchQuery}
-          control={
-            <ToggleSwitch
-              checked={includeSampleTracks}
-              onChange={setIncludeSampleTracks}
             />
           }
         />
@@ -233,7 +214,7 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {customTracks.map((track) => (
+            {customTracks.slice(0, 40).map((track) => (
               <div
                 key={track.id}
                 className="flex items-center justify-between gap-3 rounded-[11px] bg-black/[0.04] dark:bg-white/[0.06] px-3 py-2"
@@ -305,6 +286,13 @@ export function LocalLibraryTab({ searchQuery }: { searchQuery?: string }) {
                 </div>
               </div>
             ))}
+            {customTracks.length > 40 && (
+              <div className="pt-2 text-center text-[12px] text-text-tertiary">
+                Showing first 40 of {customTracks.length} local tracks — open{" "}
+                <strong className="text-text-secondary">All Music</strong> in
+                the sidebar to browse, filter, and search everything.
+              </div>
+            )}
           </div>
         )}
       </SettingSection>

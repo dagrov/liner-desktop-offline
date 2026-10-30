@@ -14,7 +14,7 @@ import { resolveLinerStream } from "@/shared/media/liner/linerPlayback";
 import {
   isOfflineModeActive,
   isOfflineTrackId,
-  resolveOfflineTrackBlob,
+  resolveOfflineTrackPlaybackSource,
 } from "@/features/offline/store/offlineLibraryStore";
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
@@ -132,12 +132,27 @@ export async function resolvePlaybackStream(
   options: ResolveStreamOptions = {},
 ): Promise<PlaybackStream> {
   if (isOfflineTrackId(track.id) || isOfflineModeActive()) {
-    const offline = await resolveOfflineTrackBlob(track.id);
+    const offline = await resolveOfflineTrackPlaybackSource(track.id);
     if (offline) {
+      const codec = offline.mimeType.includes("wav")
+        ? "pcm"
+        : offline.mimeType.includes("flac")
+          ? "flac"
+          : "mp3";
+      if (offline.kind === "disk-url") {
+        return {
+          url: offline.url,
+          isLocalDisk: true,
+          mimeType: offline.mimeType,
+          codec,
+          bitrate: 256_000,
+          expiresAtMs: null,
+        };
+      }
       return {
         blob: offline.blob,
         mimeType: offline.mimeType,
-        codec: offline.mimeType.includes("wav") ? "pcm" : "mp3",
+        codec,
         bitrate: 256_000,
         contentLength: offline.blob.size,
         expiresAtMs: null,

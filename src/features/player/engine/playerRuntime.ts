@@ -650,6 +650,14 @@ export class PlayerRuntime {
   public async preloadTrack(track: Track): Promise<void> {
     if (this.currentTrackId === track.id) return;
     if (this.preloadingTrackId === track.id) return;
+    // Local disk files stream directly from disk via liner-media:// — never copy whole files into RAM/IndexedDB
+    if (
+      typeof window !== "undefined" &&
+      window.linerElectron?.localMedia &&
+      track.id.startsWith("local:")
+    ) {
+      return;
+    }
 
     const cached = await linerDb.getAudio(track.id);
     if (cached) return;
@@ -664,6 +672,9 @@ export class PlayerRuntime {
       try {
         const stream = await resolvePlaybackStream(track, controller.signal);
         if (controller.signal.aborted) return;
+        if (stream.url?.startsWith("liner-media:") || (stream as any).isLocalDisk) {
+          return;
+        }
 
         const blob = await this.downloadAudioBlob(stream, controller.signal);
         if (!blob || controller.signal.aborted) return;
@@ -1140,6 +1151,13 @@ export class PlayerRuntime {
     stream: PlaybackStream,
     signal: AbortSignal,
   ) {
+    // Never duplicate local disk tracks into IndexedDB (saves RAM + 500GB HDD writes)
+    if (
+      (stream as any).isLocalDisk ||
+      stream.url?.startsWith("liner-media:")
+    ) {
+      return;
+    }
     if (track.durationMs && track.durationMs > 20 * 60 * 1000) return;
     const generation = audioCache.currentGeneration();
     void (async () => {

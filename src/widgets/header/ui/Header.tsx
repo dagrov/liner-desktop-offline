@@ -4,7 +4,6 @@ import {
   ArrowLeftLine,
   FontSizeLine,
   RadarLine,
-  SparklesFill,
   Upload2Line,
 } from "@mingcute/react";
 import { useTranslation } from "@/languages";
@@ -15,12 +14,16 @@ import {
   pickAndImportMusicFiles,
   triggerManualPcAudioScan,
 } from "@/features/studio";
-import { useAssistantStore } from "@/features/assistant";
 import { showToast } from "@/shared/ui";
 import logo from "@/assets/logo.svg";
 import { cn } from "@/shared/lib";
 
-const BACK_BUTTON_ROUTES = ["/library/playlist", "/artist", "/collection"];
+const BACK_BUTTON_ROUTES = [
+  "/all-music",
+  "/library/playlist",
+  "/artist",
+  "/collection",
+];
 
 function BackButton() {
   const navigate = useNavigate();
@@ -67,8 +70,6 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
   const { pathname } = useLocation();
   const showBack = BACK_BUTTON_ROUTES.includes(pathname);
   const openSettings = useModalStore((s) => s.openSettings);
-  const assistantEnabled = useAssistantStore((s) => s.enabled);
-  const setCommandBarOpen = useAssistantStore((s) => s.setCommandBarOpen);
   const isScanningPc = useOfflineLibraryStore((s) => s.isScanningPc);
 
   const handleQuickScanPc = useCallback(async () => {
@@ -82,7 +83,7 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
       showToast(
         res.totalFound > 0
           ? `PC scanned — all ${res.totalFound} audio track${res.totalFound === 1 ? "" : "s"} already in library`
-          : "No audio files found in Music, Downloads, or Desktop folders",
+          : "No audio files found on your PC yet",
         "info",
       );
     }
@@ -170,19 +171,6 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header(
           <FontSizeLine size={15} />
           <span className="hidden sm:inline">{t("offline.coversAndFonts")}</span>
         </button>
-
-        {assistantEnabled && (
-          <button
-            type="button"
-            data-no-window-drag
-            onClick={() => setCommandBarOpen(true)}
-            title="Music Assistant (Ctrl/Cmd+J)"
-            className="h-[36px] px-[12px] rounded-[10px] border border-accent-primary/25 bg-accent-primary/10 backdrop-blur-[20px] text-text-primary hover:bg-accent-primary/20 text-[12.5px] font-[600] inline-flex items-center gap-[6px] cursor-pointer transition-colors"
-          >
-            <SparklesFill size={14} className="text-accent-primary" />
-            <span className="hidden sm:inline">{t("offline.assistant")}</span>
-          </button>
-        )}
 
         <div
           data-no-window-drag

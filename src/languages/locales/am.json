@@ -49,6 +49,7 @@
     },
     "sidebar": {
       "home": "መነሻ",
+      "all_imports": "ሁሉም ሙዚቃዎች",
       "search": "ፈልግ",
       "library": "ስብስብ",
       "settings": "ቅንብሮች"
@@ -1142,5 +1143,34 @@
     "cleared_toast": "የ {{title}} ግጥም ተወግዷል",
     "clipboard_empty": "ቅንጥብ ሰሌዳው ባዶ ነው",
     "paste_shortcut_hint": "ለመለጠፍ በጽሑፍ ሳጥኑ ውስጥ Ctrl+V / Cmd+V ይጫኑ"
+  },
+  "all_imports": {
+    "title": "ሁሉም የገቡ ሙዚቃዎች",
+    "subtitle": "ከኮምፒውተርዎ የገቡ ወይም የተፈተሹ ሁሉም ሙዚቃዎች በአንድ ቦታ — በአቃፊ፣ በአልበም ወይም በአርቲስት የተደራጁ።",
+    "songs_label": "ሙዚቃዎች",
+    "play_all": "ሁሉንም አጫውት",
+    "shuffle": "ቀላቅለህ አጫውት",
+    "import_folder": "አቃፊ አስገባ",
+    "tab_all_songs": "ሁሉም ሙዚቃዎች",
+    "tab_folders": "አቃፊዎች",
+    "tab_albums": "አልበሞች",
+    "tab_artists": "አርቲስቶች",
+    "filter_placeholder": "ሁሉንም የገቡ ሙዚቃዎች፣ አቃፊዎች፣ አርቲስቶች አጣራ...",
+    "sort_recent": "በቅርቡ የገቡ",
+    "sort_title": "በርዕስ (A–Z)",
+    "sort_artist": "በአርቲስት (A–Z)",
+    "sort_folder": "በአቃፊ ስም",
+    "sort_plays": "ብዙ የተደመጡ",
+    "load_more": "ተጨማሪ አሳይ ({remaining} ይቀራሉ)",
+    "scan_found_new": "ከኮምፒውተርዎ {count} አዲስ ሙዚቃ(ዎች) ተገኝተው ተጨምረዋል",
+    "scan_all_present": "በኮምፒውተርዎ ላይ ያሉት ሁሉም {count} ሙዚቃ(ዎች) ቀድሞውኑ ገብተዋል",
+    "scan_none_found": "በኮምፒውተርዎ ላይ ምንም የድምጽ ፋይሎች አልተገኙም",
+    "imported_count": "{count} ሙዚቃ(ዎች) ገብተዋል",
+    "synced_folder_toast": "ከ {name} {count} ሙዚቃ(ዎች) ገብተዋል",
+    "open_all_btn": "ሁሉንም ሙዚቃዎች እይ",
+    "your_folders": "የሙዚቃ አቃፊዎች",
+    "see_all": "ሁሉንም እይ",
+    "recently_imported": "በቅርቡ የገቡ",
+    "see_all_count": "ሁሉንም {count} ሙዚቃዎች እይ"
   }
 }

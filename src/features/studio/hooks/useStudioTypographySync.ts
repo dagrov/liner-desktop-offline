@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { STARTER_FONTS } from "../lib/starterAssets";
 import { getStudioBinaryAsset } from "../lib/studioDb";
 import {
+  MATCH_TITLE_LYRICS_FONT_ID,
   syncElectronStudioFolder,
   useStudioStore,
 } from "../store/studioStore";
@@ -44,6 +45,7 @@ async function ensureCustomFontRegistered(
 export function useStudioTypographySync(): void {
   const customFonts = useStudioStore((s) => s.customFonts);
   const activeTitleFontId = useStudioStore((s) => s.activeTitleFontId);
+  const activeLyricsFontId = useStudioStore((s) => s.activeLyricsFontId);
   const syncedFontsFolder = useStudioStore((s) => s.syncedFontsFolder);
   const syncedCoversFolder = useStudioStore((s) => s.syncedCoversFolder);
 
@@ -54,13 +56,18 @@ export function useStudioTypographySync(): void {
     }
   }, [customFonts]);
 
-  // Apply custom font STRICTLY to music track title elements ([data-music-title="true"])
+  // Apply custom fonts STRICTLY to music track titles ([data-music-title="true"])
+  // AND lyrics verses ([data-lyrics-verse="true"] / braccato synced lyrics)
   // without altering Liner's application UI font
   useEffect(() => {
     if (typeof document === "undefined") return;
     const allFonts = [...customFonts, ...STARTER_FONTS];
     const titleFont =
       allFonts.find((f) => f.id === activeTitleFontId) ?? STARTER_FONTS[0];
+    const lyricsFont =
+      !activeLyricsFontId || activeLyricsFontId === MATCH_TITLE_LYRICS_FONT_ID
+        ? titleFont
+        : (allFonts.find((f) => f.id === activeLyricsFontId) ?? titleFont);
 
     const root = document.documentElement;
     // Ensure no legacy global UI font overrides linger
@@ -68,6 +75,7 @@ export function useStudioTypographySync(): void {
     root.style.removeProperty("--font-inter");
     document.body.style.removeProperty("font-family");
     root.style.setProperty("--font-music-title", titleFont.cssFamily);
+    root.style.setProperty("--font-lyrics-verse", lyricsFont.cssFamily);
 
     let styleEl = document.getElementById(
       STYLE_ELEMENT_ID,
@@ -78,16 +86,27 @@ export function useStudioTypographySync(): void {
       document.head.appendChild(styleEl);
     }
 
-    const spacingRule = titleFont.letterSpacing
+    const titleSpacingRule = titleFont.letterSpacing
       ? `letter-spacing: ${titleFont.letterSpacing};`
+      : "";
+    const lyricsSpacingRule = lyricsFont.letterSpacing
+      ? `letter-spacing: ${lyricsFont.letterSpacing};`
       : "";
     styleEl.textContent = `
       [data-music-title="true"] {
         font-family: ${titleFont.cssFamily} !important;
-        ${spacingRule}
+        ${titleSpacingRule}
+      }
+      [data-lyrics-verse="true"],
+      braccato-lyrics,
+      .blyrics-container,
+      .blyrics--line {
+        --blyrics-font-family: ${lyricsFont.cssFamily};
+        font-family: ${lyricsFont.cssFamily} !important;
+        ${lyricsSpacingRule}
       }
     `;
-  }, [customFonts, activeTitleFontId]);
+  }, [customFonts, activeTitleFontId, activeLyricsFontId]);
 
   // Watch synced Electron folders for fonts & covers
   useEffect(() => {

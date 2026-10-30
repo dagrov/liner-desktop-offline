@@ -4,31 +4,22 @@ import {
   CloseLine,
   Search2Line,
   CloseCircleFill,
-  ExitLine,
-  DiscordFill,
   KeyboardLine,
-  YoutubeFill,
   FolderOpenLine,
-  SparklesFill,
   FontSizeLine,
 } from "@mingcute/react";
 import {
   Play,
   Palette,
   InfoCircle,
-  Book2,
-  QuestionCircle,
   Database,
   Widget5,
   Gallery,
 } from "@solar-icons/react";
 import Dialog from "@/shared/ui/Dialog";
-import { UserAvatar } from "@/shared/ui";
 import { useScrollFade } from "@/shared/hooks";
 import { useTranslation, getTranslationsForAllLocales } from "@/languages";
 import { useModalStore } from "@/features/library";
-import { useAuthStore } from "@/features/auth";
-import { userDisplayName } from "@/entities/user";
 import {
   PlaybackTab,
   ShortcutsTab,
@@ -37,11 +28,8 @@ import {
   StorageTab,
   AboutTab,
   OverlayTab,
-  DiscordTab,
-  YoutubeTab,
   LocalLibraryTab,
   StudioTab,
-  AssistantTab,
 } from "./tabs";
 
 type TabId =
@@ -52,9 +40,6 @@ type TabId =
   | "Appearance"
   | "Customization"
   | "Overlay"
-  | "Assistant"
-  | "Discord"
-  | "Youtube"
   | "Storage"
   | "About";
 
@@ -67,16 +52,13 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Shortcuts: KeyboardLine,
   Studio: FontSizeLine,
   Overlay: Widget5,
-  Assistant: SparklesFill,
-  Discord: DiscordFill,
-  Youtube: YoutubeFill,
   Appearance: Palette,
   Customization: Gallery,
   Storage: Database,
   About: InfoCircle,
 };
 
-type TabGroupKey = "player" | "interface" | "integrations" | "application";
+type TabGroupKey = "player" | "interface" | "application";
 
 const TAB_GROUPS: { labelKey: TabGroupKey; ids: TabId[] }[] = [
   { labelKey: "player", ids: ["LocalLibrary", "Playback", "Shortcuts"] },
@@ -84,7 +66,6 @@ const TAB_GROUPS: { labelKey: TabGroupKey; ids: TabId[] }[] = [
     labelKey: "interface",
     ids: ["Studio", "Appearance", "Customization", "Overlay"],
   },
-  { labelKey: "integrations", ids: ["Assistant", "Youtube", "Discord"] },
   { labelKey: "application", ids: ["Storage", "About"] },
 ];
 
@@ -180,58 +161,6 @@ const SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] = [
     descKey: "settings.overlay.always_on_top.description",
   },
 
-  // Discord
-  {
-    tabId: "Discord",
-    titleKey: "settings.discord.enable.title",
-    descKey: "settings.discord.enable.description",
-  },
-  {
-    tabId: "Discord",
-    titleKey: "settings.discord.show_timeline.title",
-    descKey: "settings.discord.show_timeline.description",
-  },
-  {
-    tabId: "Discord",
-    titleKey: "settings.discord.show_artwork.title",
-    descKey: "settings.discord.show_artwork.description",
-  },
-  {
-    tabId: "Discord",
-    titleKey: "settings.discord.show_artist_image.title",
-    descKey: "settings.discord.show_artist_image.description",
-  },
-  {
-    tabId: "Discord",
-    titleKey: "settings.discord.show_paused.title",
-    descKey: "settings.discord.show_paused.description",
-  },
-  {
-    tabId: "Discord",
-    titleKey: "settings.discord.show_button.title",
-    descKey: "settings.discord.show_button.description",
-  },
-  {
-    tabId: "Discord",
-    titleKey: "settings.discord.show_download_button.title",
-    descKey: "settings.discord.show_download_button.description",
-  },
-  {
-    tabId: "Youtube",
-    titleKey: "settings.youtube.account_playback.title",
-    descKey: "settings.youtube.account_playback.description",
-  },
-  {
-    tabId: "Youtube",
-    titleKey: "settings.youtube.prompt_sign_in.title",
-    descKey: "settings.youtube.prompt_sign_in.description",
-  },
-  {
-    tabId: "Youtube",
-    titleKey: "settings.youtube.sync_library.title",
-    descKey: "settings.youtube.sync_library.description",
-  },
-
   // Appearance
   {
     tabId: "Appearance",
@@ -306,9 +235,6 @@ export default function SettingsModal() {
         "Appearance",
         "Customization",
         "Overlay",
-        "Assistant",
-        "Discord",
-        "Youtube",
         "Storage",
         "About",
       ];
@@ -337,9 +263,6 @@ export default function SettingsModal() {
     Shortcuts: t("settings.tabs.shortcuts") || "Shortcuts",
     Studio: "Covers & Fonts",
     Overlay: t("settings.tabs.overlay") || "Overlay",
-    Assistant: "Music Assistant",
-    Discord: t("settings.tabs.discord") || "Discord RPC",
-    Youtube: t("settings.tabs.youtube") || "YouTube",
     Appearance: t("settings.tabs.appearance"),
     Customization: t("settings.tabs.customization") || "Customization",
     Storage: t("settings.tabs.storage"),
@@ -348,24 +271,16 @@ export default function SettingsModal() {
 
   const tabDescriptions: Record<TabId, string> = {
     LocalLibrary:
-      "Import local audio files, sync desktop music folders, and manage offline tracks.",
+      "Scan all drives & folders on your PC, import audio files, and manage local music.",
     Playback: t("settings.playback.description"),
     Shortcuts:
       t("settings.shortcuts.description") ||
       "System-wide and player keyboard shortcuts.",
     Studio:
-      "Customize cover artwork and typography from your starter collection or synced folders.",
+      "Customize cover artwork and custom fonts for music titles and lyrics verses.",
     Overlay:
       t("settings.overlay.description") ||
-      "Desktop overlay behavior, position and lyrics display.",
-    Assistant:
-      "Optional local LLM and voice music curator (disabled by default).",
-    Discord:
-      t("settings.discord.description") ||
-      "Show what you're listening to on Discord with artwork, artist badge and progress bar.",
-    Youtube:
-      t("settings.youtube.description") ||
-      "Sign in to your YouTube account to prevent playback errors.",
+      "Floating mini player widget position and shortcut.",
     Appearance: t("settings.theme.description"),
     Customization:
       t("settings.customization.description") ||
@@ -388,12 +303,13 @@ export default function SettingsModal() {
         "wav",
         "music folder",
         "offline",
-        "sample",
+        "scan pc",
       ],
       Studio: [
         "cover",
         "artwork",
         "font",
+        "lyrics font",
         "typography",
         "serif",
         "sans",
@@ -401,16 +317,6 @@ export default function SettingsModal() {
         "ttf",
         "woff2",
         "studio",
-      ],
-      Assistant: [
-        "assistant",
-        "ai",
-        "llm",
-        "ollama",
-        "voice",
-        "microphone",
-        "json",
-        "command",
       ],
     };
 
@@ -427,9 +333,6 @@ export default function SettingsModal() {
       Shortcuts: "settings.shortcuts",
       Studio: "settings.tabs.appearance",
       Overlay: "settings.tabs.overlay",
-      Assistant: "settings.tabs.playback",
-      Discord: "settings.tabs.discord",
-      Youtube: "settings.tabs.youtube",
       Appearance: "settings.theme.title",
       Customization: "settings.tabs.customization",
       Storage: "settings.tabs.storage",
@@ -442,9 +345,6 @@ export default function SettingsModal() {
       Shortcuts: "settings.shortcuts.description",
       Studio: "settings.theme.description",
       Overlay: "settings.overlay.description",
-      Assistant: "settings.playback.description",
-      Discord: "settings.discord.description",
-      Youtube: "settings.youtube.description",
       Appearance: "settings.theme.description",
       Customization: "settings.customization.description",
       Storage: "settings.storage.description",
@@ -499,23 +399,12 @@ export default function SettingsModal() {
     }
   }, [searchQuery, matchingTabIds, activeTab]);
 
-  const openExternal = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  const displayName = userDisplayName(user) ?? "Liner";
-  const handle = user?.username
-    ? `@${user.username}`
-    : (user?.email ?? t("settings.manage_account"));
-
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => (!next ? handleClose() : undefined)}
       maxWidth={900}
-      className="p-0 h-[700px] !max-h-[90vh] !flex-row overflow-hidden !bg-bg-surface/70 dark:!bg-bg-elevated/50 !backdrop-blur-[60px] !border-0"
+      className="p-0 h-[700px] !max-h-[90vh] !flex-row overflow-hidden !bg-bg-surface/90 dark:!bg-bg-elevated/85 !backdrop-blur-xl !border-0"
     >
       <aside className="w-[248px] shrink-0 flex flex-col min-h-0 bg-transparent">
         <div className="px-[12px] pt-[14px] pb-[8px]">
@@ -621,86 +510,7 @@ export default function SettingsModal() {
               </div>
             ))
           )}
-
-          <div className="flex flex-col">
-            <p
-              className="text-text-tertiary text-[11px] font-[500] m-0 px-[10px] pb-[4px] pt-[2px]"
-              style={font}
-            >
-              {t("settings.groups.help")}
-            </p>
-            <div className={navGroupClass}>
-              <button
-                type="button"
-                onClick={() =>
-                  openExternal(
-                    "https://github.com/tryliner/desktop/blob/main/README.md",
-                  )
-                }
-                className="w-full flex items-center gap-[10px] px-[10px] py-[7px] rounded-[10px] border-0 bg-transparent text-text-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:text-text-primary cursor-pointer text-left transition-colors"
-                style={{ ...font, fontSize: "13px" }}
-              >
-                <Book2
-                  size={18}
-                  weight="Bold"
-                  className="text-text-tertiary shrink-0"
-                />
-                <span className="leading-none">{t("settings.docs")}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => openExternal("https://t.me/liner_app?direct")}
-                className="w-full flex items-center gap-[10px] px-[10px] py-[7px] rounded-[10px] border-0 bg-transparent text-text-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:text-text-primary cursor-pointer text-left transition-colors"
-                style={{ ...font, fontSize: "13px" }}
-              >
-                <QuestionCircle
-                  size={18}
-                  weight="Bold"
-                  className="text-text-tertiary shrink-0"
-                />
-                <span className="leading-none">{t("settings.support")}</span>
-              </button>
-            </div>
-          </div>
         </nav>
-
-        <div className="shrink-0 p-[12px] pt-[8px]">
-          <div className="flex items-center gap-[10px] px-[6px] py-[4px] min-w-0">
-            <span className="relative shrink-0">
-              <UserAvatar user={user ?? null} size={32} />
-              <span
-                className="absolute right-[-1px] bottom-[-1px] w-[10px] h-[10px] rounded-full bg-[#12B76A] border-2 border-bg-primary"
-                aria-hidden
-              />
-            </span>
-            <span className="flex-1 min-w-0 flex flex-col leading-tight">
-              <span
-                className="text-text-primary text-[13px] font-[500] truncate"
-                style={font}
-              >
-                {displayName}
-              </span>
-              <span
-                className="text-text-tertiary text-[12px] truncate"
-                style={font}
-              >
-                {handle}
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={async () => {
-                handleClose();
-                await logout();
-              }}
-              title={t("settings.profile.sign_out") || "Log out"}
-              aria-label={t("settings.profile.sign_out") || "Log out"}
-              className="p-1.5 rounded-md text-text-tertiary hover:text-[#E81123] hover:bg-border-alpha-14 transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0"
-            >
-              <ExitLine size={18} className="shrink-0" />
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* ── Right secondary frame: same roundness, inset with padding, darker ── */}
@@ -750,15 +560,6 @@ export default function SettingsModal() {
               )}
               {activeTab === "Overlay" && (
                 <OverlayTab searchQuery={searchQuery} />
-              )}
-              {activeTab === "Assistant" && (
-                <AssistantTab searchQuery={searchQuery} />
-              )}
-              {activeTab === "Discord" && (
-                <DiscordTab searchQuery={searchQuery} />
-              )}
-              {activeTab === "Youtube" && (
-                <YoutubeTab searchQuery={searchQuery} />
               )}
               {activeTab === "Appearance" && (
                 <AppearanceTab searchQuery={searchQuery} />

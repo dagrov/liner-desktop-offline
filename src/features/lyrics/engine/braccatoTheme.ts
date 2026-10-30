@@ -1,6 +1,6 @@
 export const braccatoThemeCss = `
 .blyrics-container {
-  --blyrics-font-family: var(--font-montserrat-family), system-ui, sans-serif;
+  --blyrics-font-family: var(--font-lyrics-verse, var(--font-music-title, var(--font-montserrat-family), system-ui, sans-serif));
   --blyrics-font-size: 2rem;
   --blyrics-font-weight: 600;
   --blyrics-line-height: 1.4;

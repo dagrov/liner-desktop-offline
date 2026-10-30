@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HashRouter, useLocation } from "react-router-dom";
+import { HashRouter } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import {
   ToastProvider,
@@ -10,16 +10,9 @@ import {
   showToast,
 } from "@/shared/ui";
 import { useWindowDrag } from "@/shared/hooks";
-import {
-  FloatingMiniPlayerWidget,
-  useAppIconSync,
-} from "@/features/player";
+import { FloatingMiniPlayerWidget } from "@/features/player";
 import { I18nProvider } from "@/languages";
-import { CoverSwRegistrar } from "@/features/covers";
-import { usePresenceSync } from "@/shared/presence";
-import { useTouchBarSync } from "@/features/touchbar";
 import { useOverlaySync } from "@/features/overlay";
-import { useDiscordSync } from "@/features/discord";
 import { useThemeCustomizationSync } from "@/features/settings";
 import AppFrame from "@/features/navigation/ui/AppFrame";
 import { useWindowState } from "@/features/navigation/hooks/useWindowState";
@@ -30,13 +23,10 @@ import {
   handleDroppedFilesImport,
   useStudioTypographySync,
 } from "@/features/studio";
-import { AssistantCommandBar } from "@/features/assistant";
 import { AppRoutes } from "./routes";
-import DeeplinkHandler from "./DeeplinkHandler";
 import "./globals.css";
 
 function OfflineShell({ children }: { children: React.ReactNode }) {
-  const { pathname } = useLocation();
   useWindowState();
 
   useEffect(() => {
@@ -46,17 +36,7 @@ function OfflineShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  return pathname === "/login" ? <>{children}</> : <AppFrame>{children}</AppFrame>;
-}
-
-function AppIconSync() {
-  useAppIconSync();
-  return null;
-}
-
-function PresenceSync() {
-  usePresenceSync();
-  return null;
+  return <AppFrame>{children}</AppFrame>;
 }
 
 function ThemeSync() {
@@ -69,18 +49,8 @@ function StudioSync() {
   return null;
 }
 
-function TouchBarSync() {
-  useTouchBarSync();
-  return null;
-}
-
 function OverlaySync() {
   useOverlaySync();
-  return null;
-}
-
-function DiscordSync() {
-  useDiscordSync();
   return null;
 }
 
@@ -131,7 +101,9 @@ function GlobalDropOverlay() {
         parts.push(`${result.covers} cover${result.covers === 1 ? "" : "s"}`);
       }
       if (result.lyrics > 0) {
-        parts.push(`${result.lyrics} lyrics file${result.lyrics === 1 ? "" : "s"}`);
+        parts.push(
+          `${result.lyrics} lyrics file${result.lyrics === 1 ? "" : "s"}`,
+        );
       }
       if (parts.length > 0) {
         showToast(`Imported ${parts.join(", ")}`, "success");
@@ -160,7 +132,7 @@ function GlobalDropOverlay() {
   return (
     <div className="fixed inset-3 z-[9500] pointer-events-none rounded-[18px] border-2 border-dashed border-accent-primary bg-black/55 backdrop-blur-md flex flex-col items-center justify-center gap-2 text-center px-6">
       <div className="text-[18px] font-[700] text-white tracking-tight">
-        Drop into Liner Offline Studio
+        Drop into Liner Offline
       </div>
       <div className="text-[13px] text-white/70">
         Audio (.mp3, .flac, .wav, .ogg, .m4a) · Lyrics (.lrc, .txt, .srt) ·
@@ -175,7 +147,6 @@ export default function App() {
 
   return (
     <HashRouter>
-      <CoverSwRegistrar />
       <ThemeProvider
         attribute="data-theme"
         defaultTheme="dark"
@@ -185,25 +156,19 @@ export default function App() {
         <GlobalTooltip />
         <ThemeSync />
         <StudioSync />
-        <AppIconSync />
-        <PresenceSync />
-        <TouchBarSync />
         <OverlaySync />
-        <DiscordSync />
         <AppleEmojiProvider>
           <I18nProvider>
             <ToastProvider>
               <RootErrorBoundary>
                 <OfflineBootstrap>
                   <WindowAnimationContainer>
-                    <DeeplinkHandler />
                     <OfflineShell>
                       <AppRoutes />
                     </OfflineShell>
                     <CoverPickerModal />
                     <LyricsEditorModal />
                     <FloatingMiniPlayerWidget />
-                    <AssistantCommandBar />
                     <GlobalDropOverlay />
                   </WindowAnimationContainer>
                 </OfflineBootstrap>

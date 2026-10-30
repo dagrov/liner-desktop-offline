@@ -11,6 +11,7 @@ import { showToast } from "@/shared/ui";
 import { getOfflineTrackById } from "@/features/offline";
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import {
+  MATCH_TITLE_LYRICS_FONT_ID,
   STARTER_COVERS,
   STARTER_FONTS,
   pickAndImportCoverFiles,
@@ -26,10 +27,12 @@ export function StudioTab({ searchQuery }: { searchQuery?: string }) {
   const customFonts = useStudioStore((s) => s.customFonts);
   const customCovers = useStudioStore((s) => s.customCovers);
   const activeTitleFontId = useStudioStore((s) => s.activeTitleFontId);
+  const activeLyricsFontId = useStudioStore((s) => s.activeLyricsFontId);
   const syncedFontsFolder = useStudioStore((s) => s.syncedFontsFolder);
   const syncedCoversFolder = useStudioStore((s) => s.syncedCoversFolder);
 
   const setTitleFont = useStudioStore((s) => s.setTitleFont);
+  const setLyricsFont = useStudioStore((s) => s.setLyricsFont);
   const resetTypography = useStudioStore((s) => s.resetTypography);
   const removeCustomFont = useStudioStore((s) => s.removeCustomFont);
   const removeCustomCover = useStudioStore((s) => s.removeCustomCover);
@@ -80,15 +83,17 @@ export function StudioTab({ searchQuery }: { searchQuery?: string }) {
   return (
     <div className="flex flex-col gap-[22px] pb-[14px]">
       {/* Typography Collection */}
-      <SettingSection label="Music Title Font">
+      <SettingSection label="Music Title & Lyrics Fonts">
         <SettingBlock
           title="Song Title Typography"
-          description="Customize the font used for song titles in the player and track lists without changing Liner's app UI font."
+          description="Customize the font used for song titles (and lyrics verses by default) without changing Liner's app UI font."
           searchQuery={searchQuery}
         >
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <span className="text-[12px] text-text-tertiary">
-              Applies only to music track titles
+              {activeLyricsFontId === MATCH_TITLE_LYRICS_FONT_ID
+                ? "Applies to both music titles & lyrics verses"
+                : "Applies to music titles (lyrics use separate font below)"}
             </span>
 
             <div className="flex flex-wrap items-center gap-1.5">
@@ -238,6 +243,58 @@ export function StudioTab({ searchQuery }: { searchQuery?: string }) {
                 </div>
               );
             })}
+          </div>
+        </SettingBlock>
+
+        <SettingBlock
+          title="Lyrics Verses Font"
+          description="Choose whether synced & plain lyrics verses share your Music Title font or use their own dedicated custom font."
+          searchQuery={searchQuery}
+        >
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setLyricsFont(MATCH_TITLE_LYRICS_FONT_ID)}
+              className={`h-[33px] px-3 rounded-[9px] border text-[12px] font-[500] inline-flex items-center gap-1.5 cursor-pointer transition-all ${
+                !activeLyricsFontId ||
+                activeLyricsFontId === MATCH_TITLE_LYRICS_FONT_ID
+                  ? "border-accent-primary bg-accent-primary/15 text-text-primary"
+                  : "border-border-alpha-14 bg-black/[0.03] dark:bg-white/[0.04] hover:bg-white/[0.08] text-text-secondary"
+              }`}
+            >
+              {(!activeLyricsFontId ||
+                activeLyricsFontId === MATCH_TITLE_LYRICS_FONT_ID) && (
+                <CheckLine size={13} />
+              )}
+              <span>Same as Music Title Font (Default)</span>
+            </button>
+
+            {allFonts.map((fontItem) => {
+              const isLyricsSelected = activeLyricsFontId === fontItem.id;
+              return (
+                <button
+                  key={`lyrics-font-${fontItem.id}`}
+                  type="button"
+                  onClick={() => setLyricsFont(fontItem.id)}
+                  style={{ fontFamily: fontItem.cssFamily }}
+                  className={`h-[33px] px-3 rounded-[9px] border text-[12.5px] inline-flex items-center gap-1.5 cursor-pointer transition-all ${
+                    isLyricsSelected
+                      ? "border-accent-primary bg-accent-primary/15 text-text-primary font-[600]"
+                      : "border-border-alpha-14 bg-black/[0.03] dark:bg-white/[0.04] hover:bg-white/[0.08] text-text-secondary"
+                  }`}
+                >
+                  {isLyricsSelected && <CheckLine size={13} />}
+                  <span>{fontItem.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            data-lyrics-verse="true"
+            className="mt-2 rounded-[11px] border border-border-alpha-14 bg-black/20 px-4 py-3 text-[18px] font-[600] leading-[1.45] text-text-primary"
+          >
+            “Every imported font now brings your lyrics verses to life…”
           </div>
         </SettingBlock>
       </SettingSection>

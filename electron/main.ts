@@ -51,7 +51,10 @@ import {
 } from "./netdiag.js";
 import { TouchBarManager } from "./touchbar.js";
 import { registerAuthSessionIpc } from "./auth-session-ipc.js";
-import { registerLocalMediaIpc } from "./local-media-ipc.js";
+import {
+  registerLocalMediaIpc,
+  registerLocalMediaScheme,
+} from "./local-media-ipc.js";
 import { ThumbarController } from "./thumbar.js";
 import { OverlayManager } from "./overlay.js";
 import { detectCompositor } from "./compositor/index.js";
@@ -454,6 +457,9 @@ if (!gotTheLock) {
     deliverDeeplink(parseDeeplink(url));
   });
 
+  // Register liner-media:// direct disk streaming scheme before app ready
+  registerLocalMediaScheme();
+
   app.whenReady().then(() => {
     if (!app.isPackaged && process.env.LINER_DEV_SIGNING_SECRET) {
       setDevSigningSecret(process.env.LINER_DEV_SIGNING_SECRET);
@@ -531,8 +537,10 @@ if (!gotTheLock) {
     });
     overlayManager.registerShortcut();
 
-    discordRpcManager = new DiscordRpcManager();
-    poTokenService = new PoTokenService(path.join(__dirname, "preload.cjs"));
+    // Pure offline mode: skip hidden YouTube PoToken BrowserWindow & Discord RPC socket polling
+    // to keep RAM and VRAM usage ultra-low on 8GB RAM / 120MB GPU machines.
+    discordRpcManager = null;
+    poTokenService = null;
 
     const isHyprland = Boolean(
       process.env.HYPRLAND_INSTANCE_SIGNATURE ||
@@ -1181,7 +1189,9 @@ if (!gotTheLock) {
           // no preview: drop-to-maximize still works
         }
       };
-      app.whenReady().then(() => setTimeout(warmUp, 2500));
+      // Skip prewarming extra hidden Acrylic/Overlay BrowserWindows on startup
+      // so low-VRAM GPUs (120MB) only allocate surfaces for the active window.
+      void warmUp;
     }
 
     const raiseMain = () => {

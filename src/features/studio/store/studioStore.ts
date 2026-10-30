@@ -25,12 +25,14 @@ interface StudioState {
   customFonts: FontAsset[];
   customCovers: CoverAsset[];
   activeTitleFontId: string;
+  activeLyricsFontId: string;
   activeBodyFontId: string;
   syncedFontsFolder: string | null;
   syncedCoversFolder: string | null;
   coverPickerTrackId: string | null;
 
   setTitleFont: (fontId: string) => FontAsset | null;
+  setLyricsFont: (fontId: string) => FontAsset | "match-title" | null;
   setBodyFont: (fontId: string) => FontAsset | null;
   resetTypography: () => void;
   openCoverPicker: (trackId: string) => void;
@@ -51,6 +53,7 @@ interface StudioState {
   setSyncedCoversFolder: (dir: string | null) => void;
 }
 
+export const MATCH_TITLE_LYRICS_FONT_ID = "match-title";
 const DEFAULT_TITLE_FONT_ID = "font-montserrat-geometric";
 const DEFAULT_BODY_FONT_ID = "font-inter-clean";
 
@@ -77,6 +80,7 @@ export const useStudioStore = create<StudioState>()(
       customFonts: [],
       customCovers: [],
       activeTitleFontId: DEFAULT_TITLE_FONT_ID,
+      activeLyricsFontId: MATCH_TITLE_LYRICS_FONT_ID,
       activeBodyFontId: DEFAULT_BODY_FONT_ID,
       syncedFontsFolder: null,
       syncedCoversFolder: null,
@@ -87,6 +91,18 @@ export const useStudioStore = create<StudioState>()(
         const found = all.find((f) => f.id === fontId) ?? null;
         if (!found) return null;
         set({ activeTitleFontId: found.id });
+        return found;
+      },
+
+      setLyricsFont: (fontId) => {
+        if (fontId === MATCH_TITLE_LYRICS_FONT_ID) {
+          set({ activeLyricsFontId: MATCH_TITLE_LYRICS_FONT_ID });
+          return MATCH_TITLE_LYRICS_FONT_ID;
+        }
+        const all = [...STARTER_FONTS, ...get().customFonts];
+        const found = all.find((f) => f.id === fontId) ?? null;
+        if (!found) return null;
+        set({ activeLyricsFontId: found.id });
         return found;
       },
 
@@ -101,6 +117,7 @@ export const useStudioStore = create<StudioState>()(
       resetTypography: () =>
         set({
           activeTitleFontId: DEFAULT_TITLE_FONT_ID,
+          activeLyricsFontId: MATCH_TITLE_LYRICS_FONT_ID,
           activeBodyFontId: DEFAULT_BODY_FONT_ID,
         }),
 
@@ -194,6 +211,10 @@ export const useStudioStore = create<StudioState>()(
             state.activeTitleFontId === fontId
               ? DEFAULT_TITLE_FONT_ID
               : state.activeTitleFontId,
+          activeLyricsFontId:
+            state.activeLyricsFontId === fontId
+              ? MATCH_TITLE_LYRICS_FONT_ID
+              : state.activeLyricsFontId,
           activeBodyFontId:
             state.activeBodyFontId === fontId
               ? DEFAULT_BODY_FONT_ID
@@ -231,6 +252,7 @@ export const useStudioStore = create<StudioState>()(
           imageUrl: c.imageUrl.length > 4096 ? `idb://${c.id}` : c.imageUrl,
         })),
         activeTitleFontId: state.activeTitleFontId,
+        activeLyricsFontId: state.activeLyricsFontId,
         activeBodyFontId: state.activeBodyFontId,
         syncedFontsFolder: state.syncedFontsFolder,
         syncedCoversFolder: state.syncedCoversFolder,

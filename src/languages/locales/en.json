@@ -49,6 +49,7 @@
     },
     "sidebar": {
       "home": "Home",
+      "all_imports": "All Music",
       "search": "Search",
       "library": "Library",
       "settings": "Settings"
@@ -1102,5 +1103,34 @@
     "cleared_toast": "Cleared custom lyrics for {{title}}",
     "clipboard_empty": "Clipboard is empty",
     "paste_shortcut_hint": "Press Ctrl+V / Cmd+V inside the text box to paste"
+  },
+  "all_imports": {
+    "title": "All Imported Music",
+    "subtitle": "Every song imported or scanned from your PC in one place — organized by folder, album, or artist.",
+    "songs_label": "songs",
+    "play_all": "Play All",
+    "shuffle": "Shuffle",
+    "import_folder": "Import Folder",
+    "tab_all_songs": "All Songs",
+    "tab_folders": "Folders",
+    "tab_albums": "Albums",
+    "tab_artists": "Artists",
+    "filter_placeholder": "Filter all imported songs, folders, artists...",
+    "sort_recent": "Recently Imported",
+    "sort_title": "Title (A–Z)",
+    "sort_artist": "Artist (A–Z)",
+    "sort_folder": "Folder Name",
+    "sort_plays": "Most Played",
+    "load_more": "Show more ({remaining} remaining)",
+    "scan_found_new": "Found and added {count} new song(s) from your PC",
+    "scan_all_present": "All {count} song(s) on your PC are already in All Imported Music",
+    "scan_none_found": "No audio files found on your PC yet",
+    "imported_count": "Imported {count} song(s)",
+    "synced_folder_toast": "Imported {count} song(s) from {name}",
+    "open_all_btn": "View All Songs",
+    "your_folders": "Music Folders",
+    "see_all": "See all",
+    "recently_imported": "Recently Imported",
+    "see_all_count": "See all {count} songs"
   }
 }

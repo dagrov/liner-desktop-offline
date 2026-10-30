@@ -142,7 +142,9 @@ describe("Offline Library & Audio Pipeline", () => {
     expect(tracks).toHaveLength(1);
     expect(tracks[0].artists).toBe("Mulatu Astatke");
     expect(tracks[0].title).toBe("Tezeta");
-    expect(tracks[0].coverUrl).toBe(VINYL_COVER_DATA_URL);
+    expect(tracks[0].coverUrl).toBe(
+      `liner-media://cover?path=${encodeURIComponent("/Users/demo/Music/Mulatu Astatke - Tezeta.mp3")}`,
+    );
 
     delete (window as any).linerElectron;
   });

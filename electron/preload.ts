@@ -3,7 +3,6 @@ import type {
   AuthRefreshResult,
   StoredAuthSession,
 } from "./auth-session-store";
-import { startPoTokenWorker } from "./youtube/potoken-preload";
 import type { TvSession as YoutubeTvSession } from "./youtube/tv-session";
 import type { SolveResult as YoutubeSolveResult } from "./youtube/n-solver";
 import type { MainNetResult } from "./netdiag";
@@ -13,6 +12,7 @@ import type {
   LocalLlmRequestInput,
   LocalLlmResponseOutput,
   ScannedLocalFile,
+  ScannedTrackTags,
 } from "./local-media-ipc";
 
 export interface DiscordStatus {
@@ -204,6 +204,7 @@ export interface LinerElectronApi {
       scannedDirs: string[];
       files: ScannedLocalFile[];
     }>;
+    readTagsBatch: (filePaths: string[]) => Promise<ScannedTrackTags[]>;
     readFileHead: (
       filePath: string,
       maxBytes?: number,
@@ -477,7 +478,9 @@ const api: LinerElectronApi = {
     scanDirectory: (dirPath, kind) =>
       ipcRenderer.invoke("local:scan-directory", { dirPath, kind }),
     scanPcAudio: () => ipcRenderer.invoke("local:scan-pc-audio"),
-    readFileHead: (filePath, maxBytes = 524_288) =>
+    readTagsBatch: (filePaths) =>
+      ipcRenderer.invoke("local:read-tags-batch", filePaths),
+    readFileHead: (filePath, maxBytes = 65_536) =>
       ipcRenderer.invoke("local:read-file-head", { filePath, maxBytes }),
     readSidecarLyrics: (audioFilePath) =>
       ipcRenderer.invoke("local:read-sidecar-lyrics", audioFilePath),
@@ -502,8 +505,4 @@ const api: LinerElectronApi = {
   },
 };
 
-if (location.hostname === "www.youtube.com") {
-  startPoTokenWorker();
-} else {
-  contextBridge.exposeInMainWorld("linerElectron", api);
-}
+contextBridge.exposeInMainWorld("linerElectron", api);
